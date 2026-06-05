@@ -340,7 +340,6 @@ const drawMenu = document.getElementById('drawMenu');
 const drawCanvas = document.getElementById('drawCanvas');
 const drawCtx = drawCanvas.getContext('2d');
 const highlightsLayer = document.getElementById('highlightsLayer');
-const highlightPopup = document.getElementById('highlightPopup');
 
 // Carregar anotações
 function loadAnnotations() {
@@ -401,16 +400,28 @@ function renderAnnotations(pageNum) {
 // Atualizar tamanhos quando renderiza página
 const originalRenderPage = renderPage;
 renderPage = function(num) {
-    highlightPopup.classList.remove('open');
+    
+    // Limpa as anotações antigas imediatamente da tela (evita o "ghosting")
+    drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+    highlightsLayer.innerHTML = '';
+    
     originalRenderPage(num);
-    // Redimensionar ferramentas
-    setTimeout(() => {
-        drawCanvas.width = canvas.width;
-        drawCanvas.height = canvas.height;
-        highlightsLayer.style.width = canvas.width + 'px';
-        highlightsLayer.style.height = canvas.height + 'px';
-        renderAnnotations(num);
-    }, 500); // Aguarda renderização do PDF
+    
+    // Aguarda a renderização do framework original concluir
+    const checkInterval = setInterval(() => {
+        if (!pageRendering) {
+            clearInterval(checkInterval);
+            
+            // Redimensiona sobreposições pelas medidas obtidas
+            drawCanvas.width = canvas.width;
+            drawCanvas.height = canvas.height;
+            highlightsLayer.style.width = canvas.width + 'px';
+            highlightsLayer.style.height = canvas.height + 'px';
+            
+            // Restaura as anotações da página logo que ela existir
+            renderAnnotations(num);
+        }
+    }, 50); 
 }
 
 // --- DESENHO ---
@@ -456,7 +467,6 @@ document.addEventListener('keydown', (e) => {
         isDrawMode = false;
         drawCanvas.classList.remove('active');
         drawBtn.innerHTML = '🖍️ Desenhar ▾';
-        highlightPopup.classList.remove('open');
     }
 });
 
@@ -529,16 +539,9 @@ document.getElementById('pageWrapper').addEventListener('mouseup', (e) => {
         const selectedText = selection.toString().trim();
         
         if (selectedText.length > 0) {
-            // Configurar popup de highlight
             const range = selection.getRangeAt(0);
             const rects = range.getClientRects();
             const wrapperRect = document.getElementById('pageWrapper').getBoundingClientRect();
-            
-            // Posição para o popup (em relação ao viewport, já que o popup é fixed/absolute no body)
-            const lastRect = rects[rects.length - 1];
-            highlightPopup.style.left = (lastRect.right + 5) + 'px';
-            highlightPopup.style.top = (lastRect.bottom + 5) + 'px';
-            highlightPopup.classList.add('open');
 
             lastSelectionText = selectedText;
             lastSelectionRects = [];
@@ -561,22 +564,16 @@ document.getElementById('pageWrapper').addEventListener('mouseup', (e) => {
             
             const translatedResult = await translator.translate(selectedText, 'en', 'pt-br');
             translatedTextArea.textContent = translatedResult;
-        } else {
-            highlightPopup.classList.remove('open');
         }
     }, 100);
 });
 
-document.addEventListener('mousedown', (e) => {
-    if(!highlightPopup.contains(e.target)) {
-        highlightPopup.classList.remove('open');
-    }
-});
-
-// Ações do Popup de Highlight
+// Ações do painel lateral de Highlight
 document.getElementById('hlColors').addEventListener('click', (e) => {
     if(e.target.classList.contains('color-btn')) {
         const color = e.target.dataset.color;
+        
+        if (lastSelectionRects.length === 0) return;
         
         if (color !== 'none') {
             if (!annotations.highlights[currentPage]) annotations.highlights[currentPage] = [];
@@ -599,7 +596,7 @@ document.getElementById('hlColors').addEventListener('click', (e) => {
         }
         
         window.getSelection().removeAllRanges();
-        highlightPopup.classList.remove('open');
+        lastSelectionRects = [];
     }
 });
 

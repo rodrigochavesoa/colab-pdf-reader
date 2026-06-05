@@ -90,7 +90,7 @@ Versão empacotada estará disponível em breve para instalação com um clique.
 2. **Arraste para o navegador** ou abra normalmente (`Ctrl+O`)
 3. A extensão **redireciona automaticamente** para o visualizador customizado
 
-### Navegação
+### Navegação e Ferramentas
 
 | Ação | Comando |
 |------|---------|
@@ -99,16 +99,25 @@ Versão empacotada estará disponível em breve para instalação com um clique.
 | **Zoom in** | Botão `➕`, `Ctrl +` ou `Ctrl + Scroll` |
 | **Zoom out** | Botão `➖`, `Ctrl -` ou `Ctrl + Scroll` |
 | **Traduzir texto** | Selecione o texto (abre sidebar automaticamente) |
-| **Fechar tradução** | Clique em `✖` no painel |
+| **Destacar (Highlight)** | Selecione o texto e escolha uma cor na **Sidebar** |
+| **Remover Destaque** | Selecione o trecho marcado e clique em "Sem Cor" (ícone proibido) na Sidebar |
+| **Desenho Livre** | Clique em `🖍️ Desenhar`, escolha cor/espessura e anote no PDF |
+| **Sair do Desenho** | Tecla `ESC` ou clique novamente no botão ativo |
+| **Limpar Desenhos** | Opção "Limpar Desenhos da Página" no menu de desenho |
+| **Fechar tradução** | Clique em `✖` no painel lateral |
 
 ### Exemplo de Fluxo
 
+<div align="center">
+  <img src="assets/como_usar.png" alt="Como usar marcações e desenhos" width="700px">
+</div>
+
 ```
-1. Abra um PDF (ex: documento_tecnico.pdf)
-2. A extensão lembra a página anterior automaticamente
-3. Selecione um parágrafo em inglês
-4. Sidebar abre com tradução em português
-5. Próxima sessão: mesma página esperando você
+1. Abra um PDF (ex: document.pdf)
+2. Selecione uma frase importante → Painel lateral abre
+3. Clique no círculo Amarelo na lateral → O texto é destacado
+4. Ative o pincel 🖍️ para circular um diagrama ou fazer uma seta
+5. Próxima sessão: marcações e desenhos estarão lá te esperando
 ```
 
 ---
@@ -141,6 +150,7 @@ colab-pdf-reader/
 ├── CONTRIBUITING.md           # Arquivo para contribuição
 ├── LICENSE                    # Licença MIT
 ├── .webextignore              # Arquivos ignorados no Web-Ext Build
+├── .github                    # Arquivos workflows
 └── .gitignore                 # Arquivos ignorados no Git
 ```
 
@@ -340,20 +350,26 @@ Durante o desenvolvimento e testes da extensão, documentamos diferenças import
 * **Limite mensal:** **2.000.000 (2 milhões) de caracteres por mês** no plano gratuito.
 * **Cenário Ideal:** Uso contínuo no dia a dia (produção), leitura de documentações densas e livros longos.
 
-### v1.1.0 (Próximo)
+---
+
+## 📊 Roadmap - Sprint
+
+### v1.1.0 (Atual)
+- [x] **🖍️ Anotações e Desenho Livre:** Pincel com espessura e cores customizáveis.
+- [x] **🖍️ Highlights Persistentes:** Marcação de texto integrada à Sidebar para leitura limpa.
+- [x] **🧹 Gerenciador de Limpeza:** Remoção seletiva de marcações e limpeza total de desenhos por página.
+- [x] **🚀 Sincronia de Renderização:** Fim do efeito "ghosting" ao trocar de página.
 - [ ] Atalhos de teclado customizáveis
   - `Ctrl + Shift + T` → Abrir/fechar tradução
   - `Ctrl + [` / `Ctrl + ]` → Zoom in/out
   - `Alt + J` / `Alt + K` → Próxima/anterior página
 
+### v1.2.0 (Próximo)
 - [ ] Painel de opções (Options Page)
   - Configurar zoom padrão
   - Escolher idioma alvo
   - Selecionar provedor de tradução
-
-### v1.2.0 (Futuro)
 - [ ] Suporte a Google Translate
-- [ ] Anotações e highlights persistentes
 - [ ] Busca dentro do documento
 - [ ] Modo dark/light automático
 - [ ] Histórico de documentos recentes

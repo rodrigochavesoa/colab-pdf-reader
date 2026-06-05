@@ -29,10 +29,10 @@
             height: 50px; background-color: #1e1e1e;
             display: flex; align-items: center; gap: 15px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 10; flex-shrink: 0;
-            padding: 0 20px; /* Margem interna nas bordas */
+            padding: 0 20px; 
         }
         .book-title { 
-            font-size: 14px; flex: 1; /* Ocupa espaço disponível para empurrar outros */
+            font-size: 14px; flex: 1; 
             max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #aaa; 
         }
         .controls-center {
@@ -109,13 +109,13 @@
         
         .text-box {
             width: 100%; 
-            min-height: 50px; /* Reduzimos a altura mínima inicial */
-            height: auto; /* Permite crescer infinito */
+            min-height: 50px; 
+            height: auto; 
             background-color: #1e1e1e;
             border: 1px solid #3e3e42; border-radius: 4px; color: #ddd;
             padding: 10px; margin-bottom: 15px; font-size: 14px; box-sizing: border-box;
             line-height: 1.5;
-            white-space: pre-wrap; /* Garante que as quebras de linha do PDF sejam respeitadas */
+            white-space: pre-wrap; 
             word-wrap: break-word;
         }
         .translate-label { font-size: 12px; color: #aaa; margin-bottom: 5px; display: block; }
@@ -201,23 +201,25 @@
             </div>
         </div>
 
-        <div class="highlight-popup" id="highlightPopup">
-            <div class="color-picker" style="margin-bottom: 5px; padding: 0 5px;" id="hlColors">
-                <div class="color-btn" style="background: var(--hl-yellow)" data-color="#fced6e"></div>
-                <div class="color-btn" style="background: var(--hl-green)" data-color="#7cfb62"></div>
-                <div class="color-btn" style="background: var(--hl-blue)" data-color="#70d8ff"></div>
-                <div class="color-btn" style="background: var(--hl-pink)" data-color="#f5a8da"></div>
-                <div class="color-btn" style="background: var(--hl-red)" data-color="#ff6a6a"></div>
-                <div class="color-btn color-btn-none" data-color="none" title="Remover"></div>
-            </div>
-        </div>
-
        <aside class="sidebar" id="translatorSidebar">
             <div class="sidebar-header">
-                <span>🌐 Tradutor Colab</span>
+                <span>🌐 Leitura e Tradução</span>
                 <button class="close-btn" id="closeSidebarBtn">✖</button>
             </div>
             <div class="sidebar-content">
+                
+                <div style="margin-bottom: 20px; background: #1e1e1e; padding: 10px; border-radius: 6px; border: 1px solid #3e3e42;">
+                    <span class="translate-label" style="margin-bottom: 8px;">Destaque a seleção atual:</span>
+                    <div class="color-picker" id="hlColors">
+                        <div class="color-btn" style="background: var(--hl-yellow)" data-color="#fced6e"></div>
+                        <div class="color-btn" style="background: var(--hl-green)" data-color="#7cfb62"></div>
+                        <div class="color-btn" style="background: var(--hl-blue)" data-color="#70d8ff"></div>
+                        <div class="color-btn" style="background: var(--hl-pink)" data-color="#f5a8da"></div>
+                        <div class="color-btn" style="background: var(--hl-red)" data-color="#ff6a6a"></div>
+                        <div class="color-btn color-btn-none" data-color="none" title="Remover" style="margin-left: auto;"></div>
+                    </div>
+                </div>
+
                 <span class="translate-label">Inglês (Detectado)</span>
                 <div class="text-box" id="sourceText">Selecione um texto no PDF...</div>
                 
