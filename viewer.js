@@ -247,6 +247,22 @@ document.getElementById('nextBtn').addEventListener('click', () => {
     renderPage(currentPage);
 });
 
+// Atalhos de Teclado (Navegação por Setas)
+window.addEventListener('keydown', (e) => {
+    // Evita disparar atalhos se o usuário estiver digitando em campos de texto ou mudando opções
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+    if (e.key === 'ArrowRight') {
+        if (!pdfDoc || currentPage >= pdfDoc.numPages || pageRendering) return;
+        currentPage++;
+        renderPage(currentPage);
+    } else if (e.key === 'ArrowLeft') {
+        if (!pdfDoc || currentPage <= 1 || pageRendering) return;
+        currentPage--;
+        renderPage(currentPage);
+    }
+});
+
 const sidebar = document.getElementById('translatorSidebar');
 const closeSidebarBtn = document.getElementById('closeSidebarBtn');
 const sourceTextArea = document.getElementById('sourceText');
