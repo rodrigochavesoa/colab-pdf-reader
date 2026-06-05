@@ -308,6 +308,7 @@ A extensão segue a política de CSP mais restritiva:
 - [x] Renderização com PDF.js
 - [x] Seleção e destaque de texto
 - [x] Sidebar de tradução com MyMemory
+- [x] Integração com Microsoft Translator (Azure)
 
 NOTA:
 
@@ -339,7 +340,6 @@ Durante o desenvolvimento e testes da extensão, documentamos diferenças import
   - Selecionar provedor de tradução
 
 ### v1.2.0 (Futuro)
-- [ ] Integração com Microsoft Translator (Azure)
 - [ ] Suporte a Google Translate
 - [ ] Anotações e highlights persistentes
 - [ ] Busca dentro do documento
