@@ -6,6 +6,7 @@
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](#)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-critical.svg)](https://developer.chrome.com/docs/extensions/mv3/)
 [![Security: Snyk](https://img.shields.io/badge/Security-Snyk%20Tested-4c4a73.svg)](https://snyk.io/)
+[![CodeQL Analysis](https://github.com/rodrigochavesoa/colab-pdf-reader/actions/workflows/codeql.yml/badge.svg)](https://github.com/rodrigochavesoa/colab-pdf-reader/actions/workflows/codeql.yml)
 
 <div align="center">
   <img src="assets/colab_pdf_viewer.png" alt="Demonstração do Smart PDF Viewer" width="800px">
