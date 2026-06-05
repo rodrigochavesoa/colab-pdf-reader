@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Colab PDF Viewer",
+  "version": "1.0.0",
+  "description": "Lembra a última página de PDFs locais e traduz textos instantaneamente.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "contextMenus",
+    "tabs"
+  ],
+  "host_permissions": [
+    "file:///*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"    
+  },
+  "action": {
+    "default_popup": "viewer.html"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "colab-pdf-viewer@example.com",
+      "strict_min_version": "109.0"
+    }
+  }
+}

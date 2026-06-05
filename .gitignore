@@ -1,0 +1,7 @@
+# Ignora as credenciais reais do desenvolvedor
+config.js
+
+# Ignora pastas de sistema (opcional, mas recomendado)
+.DS_Store
+Thumbs.db
+.vscode
