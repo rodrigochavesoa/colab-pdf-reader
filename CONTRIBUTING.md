@@ -83,6 +83,20 @@ Antes de começar, certifique-se de ter:
 
 5. **Verifique o setup** testando a extensão com um PDF local
 
+### 🛠️ Empacotamento e Build para Produção
+
+Para testar o processo de build ou gerar o ficheiro final para submissão às lojas, utilizamos o `web-ext`. Não é necessário instalar globalmente, pode usar via `npx`:
+
+```bash
+# Comando padrão para gerar o pacote .zip
+npx web-ext build --source-dir "." --artifacts-dir "../project-colab-pdf-reader_dist" --ignore-files "config.js" ".webextignore"
+```
+
+**Parâmetros importantes:**
+- `--source-dir`: Pasta raiz do projeto (geralmente `"."`)
+- `--artifacts-dir`: Onde o arquivo `.zip` será salvo (recomendamos uma pasta fora da raiz)
+- `--ignore-files`: Garante que ficheiros sensíveis como `config.js` não sejam incluídos no pacote final.
+
 ---
 
 ## 🐛 Reportando Bugs

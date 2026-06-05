@@ -274,6 +274,16 @@ Se preferir testar sem criar uma conta no Azure, abra o arquivo `viewer.js`, loc
 | **PDF.js** | 3.11.174 | Renderização de PDFs |
 | **Manifest V3** | 3 | Padrão de extensão moderna |
 
+### 🛠️ Empacotamento (Build)
+
+Se desejar gerar um ficheiro `.zip` pronto para distribuição (limpo de ficheiros de desenvolvimento e configurações locais), utilize a ferramenta `web-ext` via `npx`:
+
+```bash
+npx web-ext build --source-dir "." --artifacts-dir "../project-colab-pdf-reader_dist" --ignore-files "config.js" ".webextignore"
+```
+
+*Nota: O comando acima ignora automaticamente o seu `config.js` privado e segue as regras definidas no `.webextignore`.*
+
 ### Permissões Solicitadas
 
 ```json
