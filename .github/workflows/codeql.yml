@@ -1,14 +1,16 @@
 name: "CodeQL Analysis"
 
-# O workflow será executado sempre que fizer push para a main ou abrir um Pull Request
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
   schedule:
-    # Executa uma verificação semanal de segurança por precaução (domingo à 1h30)
     - cron: '30 1 * * 0'
+
+# Adicionamos esta variável para forçar o uso do Node 24 e remover o primeiro aviso
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
 
 jobs:
   analyze:
@@ -17,12 +19,11 @@ jobs:
     permissions:
       actions: read
       contents: read
-      security-events: write # Necessário para publicar os resultados no separador "Security" do GitHub
+      security-events: write 
 
     strategy:
       fail-fast: false
       matrix:
-        # Foco exclusivo em JavaScript para a extensão
         language: [ 'javascript' ]
 
     steps:
@@ -30,18 +31,17 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
+      # Atualizamos de v3 para v4 para remover o segundo aviso
+      uses: github/codeql-action/init@v4 
       with:
         languages: ${{ matrix.language }}
-        # É AQUI QUE A MAGIA ACONTECE:
-        # Ignoramos os ficheiros de terceiros para focar apenas no código criado por si.
-        # Isto evita os falsos alertas "DANGEROUS_EVAL" do motor do PDF.js.
         config: |
           paths-ignore:
             - '**/pdf.min.js'
             - '**/pdf.worker.min.js'
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
+      # Atualizamos de v3 para v4 para remover o segundo aviso
+      uses: github/codeql-action/analyze@v4 
       with:
         category: "/language:${{matrix.language}}"
