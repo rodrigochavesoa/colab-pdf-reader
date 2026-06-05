@@ -137,6 +137,7 @@ colab-pdf-reader/
 ├── pdf_viewer.min.css         # Calibração de malha de texto
 │
 ├── README.md                  # Este arquivo
+├── CONTRIBUITING.md           # Arquivo para contribuição
 ├── LICENSE                    # Licença MIT
 ├── .webextignore              # Arquivos ignorados no Web-Ext Build
 └── .gitignore                 # Arquivos ignorados no Git
