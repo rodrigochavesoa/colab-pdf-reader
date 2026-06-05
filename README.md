@@ -447,6 +447,47 @@ Tem dúvidas ou sugestões?
 ### Instalação via Microsoft Edge Add-ons
 (Em desenvolvimento — em breve disponível para download com um clique)
 
+### 🦊 Suporte ao Mozilla Firefox (Gecko)
+
+A arquitetura principal desta extensão foi otimizada para navegadores baseados em **Chromium** (Google Chrome, Microsoft Edge, Opera, Brave). O ecossistema **Gecko** (Mozilla Firefox) também suporta o Manifest V3, mas exige requisitos de segurança e estruturais ligeiramente diferentes.
+
+Se deseja compilar e instalar esta extensão no Firefox, será necessário criar um pacote separado e fazer 3 pequenos ajustes no ficheiro `manifest.json`:
+
+**1. Adicionar o Fallback no Background**
+O Firefox exige que o `service_worker` tenha um fallback explícito usando a propriedade `scripts`.
+```json
+  "background": {
+    "service_worker": "background.js",
+    "type": "module",
+    "scripts": ["background.js"] // Obrigatório apenas no Firefox
+  }
+
+
+2. Adicionar o ID da Extensão (Gecko ID)
+A loja da Mozilla não aceita extensões Manifest V3 sem um ID explícito declarado. Adicione o seguinte bloco na raiz do manifesto:
+
+"browser_specific_settings": {
+    "gecko": {
+      "id": "colab-pdf-viewer@pontochavedesign.com",
+      "strict_min_version": "109.0"
+    }
+  }
+
+3. Política de Segurança (CSP)
+A extensão utiliza Web Workers (pdf.worker.min.js) que podem ser interpretados de forma diferente pelo Firefox. Certifique-se de que a sua política de CSP no manifest.json se mantém estrita e sem o valor blob: (que é proibido no Chromium). A configuração abaixo costuma ser universalmente aceite:
+
+"content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'"
+  }
+
+Dica de Desenvolvimento:
+Recomendamos manter uma pasta separada (ex: project_firefox_dist) exclusivamente para a compilação desta versão, isolando-a do ficheiro .zip gerado para o Chrome e Edge.
+
+NOTE : 
+
+4. Opera, Brave e Vivaldi (Ecossistema Chromium):
+Não precisa de alterar nada.
+O Opera e estes outros navegadores partilham exatamente o mesmo motor base do Chrome e do Edge. Isto significa que o ficheiro .zip que acabou de gerar (sem o blob: e sem o fallback de scripts) vai funcionar na perfeição na loja de extensões do Opera. As regras rígidas de segurança aplicam-se igualmente a todos eles.
 ---
 
 **Desenvolvido com carinho para leitores, pesquisadores e desenvolvedores que entendem o valor da produtividade.**
