@@ -95,8 +95,8 @@ Versão empacotada estará disponível em breve para instalação com um clique.
 |------|---------|
 | **Próxima página** | Botão `➡️` ou `Seta Direita` |
 | **Página anterior** | Botão `⬅️` ou `Seta Esquerda` |
-| **Zoom in** | Botão `➕` ou `Ctrl + Scroll` |
-| **Zoom out** | Botão `➖` ou `Ctrl + Scroll` |
+| **Zoom in** | Botão `➕`, `Ctrl +` ou `Ctrl + Scroll` |
+| **Zoom out** | Botão `➖`, `Ctrl -` ou `Ctrl + Scroll` |
 | **Traduzir texto** | Selecione o texto (abre sidebar automaticamente) |
 | **Fechar tradução** | Clique em `✖` no painel |
 

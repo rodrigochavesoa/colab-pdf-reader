@@ -247,11 +247,12 @@ document.getElementById('nextBtn').addEventListener('click', () => {
     renderPage(currentPage);
 });
 
-// Atalhos de Teclado (Navegação por Setas)
+// Atalhos de Teclado (Navegação por Setas e Zoom)
 window.addEventListener('keydown', (e) => {
     // Evita disparar atalhos se o usuário estiver digitando em campos de texto ou mudando opções
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
 
+    // Navegação por Setas
     if (e.key === 'ArrowRight') {
         if (!pdfDoc || currentPage >= pdfDoc.numPages || pageRendering) return;
         currentPage++;
@@ -261,7 +262,30 @@ window.addEventListener('keydown', (e) => {
         currentPage--;
         renderPage(currentPage);
     }
+
+    // Zoom (Ctrl + '+' / '-')
+    if (e.ctrlKey) {
+        if (e.key === '+' || e.key === '=' || e.key === 'Add') {
+            e.preventDefault();
+            zoomIn();
+        } else if (e.key === '-' || e.key === 'Subtract') {
+            e.preventDefault();
+            zoomOut();
+        }
+    }
 });
+
+// Suporte a zoom com Ctrl + Scroll do mouse
+window.addEventListener('wheel', (e) => {
+    if (e.ctrlKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+            zoomIn();
+        } else {
+            zoomOut();
+        }
+    }
+}, { passive: false });
 
 const sidebar = document.getElementById('translatorSidebar');
 const closeSidebarBtn = document.getElementById('closeSidebarBtn');
@@ -277,23 +301,26 @@ closeSidebarBtn.addEventListener('click', () => {
 // ==========================================
 const zoomDisplay = document.getElementById('zoomDisplay');
 
-document.getElementById('zoomInBtn').addEventListener('click', () => {
+function zoomIn() {
     // Limita o zoom máximo a 300% e evita cliques duplos rápidos
     if (pageRendering || currentScale >= 3.0) return; 
     
     currentScale += 0.25; // Aumenta de 25 em 25%
     zoomDisplay.textContent = Math.round(currentScale * 100) + '%';
     renderPage(currentPage);
-});
+}
 
-document.getElementById('zoomOutBtn').addEventListener('click', () => {
+function zoomOut() {
     // Limita o zoom mínimo a 50%
     if (pageRendering || currentScale <= 0.5) return; 
     
     currentScale -= 0.25; // Reduz de 25 em 25%
     zoomDisplay.textContent = Math.round(currentScale * 100) + '%';
     renderPage(currentPage);
-});
+}
+
+document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
+document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
 
 // O Gatilho
 document.getElementById('pageWrapper').addEventListener('mouseup', () => {
