@@ -1,0 +1,47 @@
+name: "CodeQL Analysis"
+
+# O workflow será executado sempre que fizer push para a main ou abrir um Pull Request
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    # Executa uma verificação semanal de segurança por precaução (domingo à 1h30)
+    - cron: '30 1 * * 0'
+
+jobs:
+  analyze:
+    name: Analyze Code Security
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write # Necessário para publicar os resultados no separador "Security" do GitHub
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Foco exclusivo em JavaScript para a extensão
+        language: [ 'javascript' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        # É AQUI QUE A MAGIA ACONTECE:
+        # Ignoramos os ficheiros de terceiros para focar apenas no código criado por si.
+        # Isto evita os falsos alertas "DANGEROUS_EVAL" do motor do PDF.js.
+        config: |
+          paths-ignore:
+            - '**/pdf.min.js'
+            - '**/pdf.worker.min.js'
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
