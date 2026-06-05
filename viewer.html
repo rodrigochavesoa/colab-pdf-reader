@@ -16,6 +16,15 @@
             user-select: none; /* Previne bug de selecionar fundo escuro */
         }
         
+        /* Novas variáveis para ferramentas */
+        :root {
+            --hl-yellow: #fced6e;
+            --hl-green: #7cfb62;
+            --hl-blue: #70d8ff;
+            --hl-pink: #f5a8da;
+            --hl-red: #ff6a6a;
+        }
+        
         .toolbar {
             height: 50px; background-color: #1e1e1e;
             display: flex; align-items: center; gap: 15px;
@@ -50,7 +59,39 @@
         .textLayer span { user-select: text; pointer-events: all; }
         .textLayer ::selection { background: rgba(0, 120, 212, 0.35) !important; }
 
-        /* --- SIDEBAR --- */
+        /* --- FERRAMENTAS --- */
+        .color-picker { display: flex; gap: 8px; margin-bottom: 10px; }
+        .color-btn { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+        .color-btn.selected { border-color: white; transform: scale(1.1); box-shadow: 0 0 5px rgba(255,255,255,0.5); }
+        .color-btn-none { background: #444; border: 1px solid #777; position: relative; }
+        .color-btn-none::after { content: ''; position: absolute; top: 10px; left: 2px; right: 2px; height: 2px; background: #fff; transform: rotate(45deg); }
+
+        .draw-menu {
+            position: absolute; top: 50px; left: 15px; background: #333; border: 1px solid #444;
+            border-radius: 6px; padding: 15px; display: none; flex-direction: column; z-index: 100;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); width: 240px;
+        }
+        .draw-menu.open { display: flex; }
+        .draw-menu label { font-size: 13px; color: #ccc; margin-bottom: 8px; font-weight: bold; }
+        .thickness-slider { width: 100%; margin-bottom: 5px; }
+
+        .highlight-popup {
+            position: fixed; background: #2d2d30; border: 1px solid #444; border-radius: 6px;
+            padding: 8px; display: none; flex-direction: column; z-index: 9999;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            pointer-events: auto; user-select: none;
+        }
+        .highlight-popup.open { display: flex; }
+        .highlight-action { 
+            display: flex; align-items: center; gap: 10px; padding: 6px 10px; 
+            cursor: pointer; color: #ddd; font-size: 13px; border-radius: 4px; 
+        }
+        .highlight-action:hover { background: #3e3e42; }
+        
+        .highlight-rect { position: absolute; pointer-events: none; opacity: 1; }
+        .draw-canvas { position: absolute; top: 0; left: 0; z-index: 5; pointer-events: none; }
+        .draw-canvas.active { pointer-events: all; cursor: crosshair; }
+
         .sidebar {
             width: 0; background-color: #252526; border-left: 1px solid #3e3e42;
             transition: width 0.3s ease; overflow: hidden; display: flex; flex-direction: column;
@@ -115,7 +156,25 @@
 </head>
 <body>
    <div class="toolbar">
-        <span class="book-title" id="bookTitle">Carregando livro...</span>
+        <button id="drawBtn" title="Anotações Livre">🖍️ Desenhar ▾</button>
+        <div class="draw-menu" id="drawMenu">
+            <label>Cores</label>
+            <div class="color-picker" id="drawColors">
+                <div class="color-btn selected" style="background: var(--hl-yellow)" data-color="#fced6e"></div>
+                <div class="color-btn" style="background: var(--hl-green)" data-color="#7cfb62"></div>
+                <div class="color-btn" style="background: var(--hl-blue)" data-color="#70d8ff"></div>
+                <div class="color-btn" style="background: var(--hl-pink)" data-color="#f5a8da"></div>
+                <div class="color-btn" style="background: var(--hl-red)" data-color="#ff6a6a"></div>
+            </div>
+            <label style="margin-top: 10px;">Espessura</label>
+            <input type="range" class="thickness-slider" id="drawThickness" min="1" max="10" value="4">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: #888;">
+                <span>Fino</span><span>Grosso</span>
+            </div>
+            <button id="clearDrawingsBtn" style="margin-top: 15px; padding: 5px; font-size: 12px; background: #e74c3c; color: white;">🗑️ Limpar Desenhos da Página</button>
+        </div>
+
+        <span class="book-title" id="bookTitle" style="margin-left: 15px;">Carregando livro...</span>
         
         <div class="controls-center">
             <button id="zoomOutBtn" title="Reduzir Zoom">➖</button>
@@ -136,7 +195,20 @@
         <div class="pdf-area" id="pdfArea">
             <div class="page-wrapper" id="pageWrapper">
                 <canvas id="pdfCanvas"></canvas>
-                <div id="textLayer" class="textLayer"></div>
+                <div id="highlightsLayer" style="position: absolute; top: 0; left: 0; pointer-events: none; mix-blend-mode: multiply;"></div>
+                <canvas id="drawCanvas" class="draw-canvas"></canvas>
+                <div id="textLayer" class="textLayer" style="z-index: 2;"></div>
+            </div>
+        </div>
+
+        <div class="highlight-popup" id="highlightPopup">
+            <div class="color-picker" style="margin-bottom: 5px; padding: 0 5px;" id="hlColors">
+                <div class="color-btn" style="background: var(--hl-yellow)" data-color="#fced6e"></div>
+                <div class="color-btn" style="background: var(--hl-green)" data-color="#7cfb62"></div>
+                <div class="color-btn" style="background: var(--hl-blue)" data-color="#70d8ff"></div>
+                <div class="color-btn" style="background: var(--hl-pink)" data-color="#f5a8da"></div>
+                <div class="color-btn" style="background: var(--hl-red)" data-color="#ff6a6a"></div>
+                <div class="color-btn color-btn-none" data-color="none" title="Remover"></div>
             </div>
         </div>
 

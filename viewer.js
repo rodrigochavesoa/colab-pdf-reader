@@ -174,6 +174,7 @@ if (BOOK_ID) {
             if (result[BOOK_ID] && result[BOOK_ID] <= pdfDoc.numPages) {
                 currentPage = result[BOOK_ID];
             }
+            loadAnnotations();
             renderPage(currentPage);
         });
     }).catch(err => {
@@ -322,31 +323,288 @@ function zoomOut() {
 document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
 document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
 
-// O Gatilho
-document.getElementById('pageWrapper').addEventListener('mouseup', () => {
+// ==========================================
+// 7. ANOTAÇÕES E HIGHLIGHTS
+// ==========================================
+let annotations = {
+    highlights: {}, // pageNumber -> [ { color, rects: [[x,y,w,h]] } ]
+    drawings: {}    // pageNumber -> [ { color, thickness, paths: [[x,y], ...] } ]
+};
+
+let isDrawMode = false;
+let currentDrawColor = '#fced6e';
+let currentThickness = 4;
+
+const drawBtn = document.getElementById('drawBtn');
+const drawMenu = document.getElementById('drawMenu');
+const drawCanvas = document.getElementById('drawCanvas');
+const drawCtx = drawCanvas.getContext('2d');
+const highlightsLayer = document.getElementById('highlightsLayer');
+const highlightPopup = document.getElementById('highlightPopup');
+
+// Carregar anotações
+function loadAnnotations() {
+    if (!BOOK_ID) return;
+    chrome.storage.local.get([`ann_${BOOK_ID}`], (result) => {
+        if (result[`ann_${BOOK_ID}`]) {
+            annotations = result[`ann_${BOOK_ID}`];
+        }
+        renderAnnotations(currentPage);
+    });
+}
+
+// Salvar anotações
+function saveAnnotations() {
+    if (!BOOK_ID) return;
+    chrome.storage.local.set({ [`ann_${BOOK_ID}`]: annotations });
+}
+
+// Renderizar anotações da página atual
+function renderAnnotations(pageNum) {
+    if (!annotations) return;
+    
+    // Configura canvas de desenho
+    drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+    const pageDrawings = annotations.drawings[pageNum] || [];
+    pageDrawings.forEach(d => {
+        if (d.paths.length < 2) return;
+        drawCtx.beginPath();
+        drawCtx.strokeStyle = d.color;
+        drawCtx.lineWidth = d.thickness * currentScale; // Ajusta espessura pelo zoom
+        drawCtx.lineCap = 'round';
+        drawCtx.lineJoin = 'round';
+        drawCtx.moveTo(d.paths[0][0] * currentScale, d.paths[0][1] * currentScale);
+        for(let i=1; i<d.paths.length; i++) {
+            drawCtx.lineTo(d.paths[i][0] * currentScale, d.paths[i][1] * currentScale);
+        }
+        drawCtx.stroke();
+    });
+
+    // Configura highlights
+    highlightsLayer.innerHTML = '';
+    const pageHighlights = annotations.highlights[pageNum] || [];
+    pageHighlights.forEach((hl, index) => {
+        hl.rects.forEach(rect => {
+            const div = document.createElement('div');
+            div.className = 'highlight-rect';
+            div.style.backgroundColor = hl.color;
+            div.style.left = (rect[0] * currentScale) + 'px';
+            div.style.top = (rect[1] * currentScale) + 'px';
+            div.style.width = (rect[2] * currentScale) + 'px';
+            div.style.height = (rect[3] * currentScale) + 'px';
+            div.dataset.index = index;
+            highlightsLayer.appendChild(div);
+        });
+    });
+}
+
+// Atualizar tamanhos quando renderiza página
+const originalRenderPage = renderPage;
+renderPage = function(num) {
+    highlightPopup.classList.remove('open');
+    originalRenderPage(num);
+    // Redimensionar ferramentas
+    setTimeout(() => {
+        drawCanvas.width = canvas.width;
+        drawCanvas.height = canvas.height;
+        highlightsLayer.style.width = canvas.width + 'px';
+        highlightsLayer.style.height = canvas.height + 'px';
+        renderAnnotations(num);
+    }, 500); // Aguarda renderização do PDF
+}
+
+// --- DESENHO ---
+let isDrawing = false;
+let currentPath = [];
+
+drawBtn.addEventListener('click', (e) => {
+    if (isDrawMode) {
+        // Desativa o modo de desenho
+        isDrawMode = false;
+        drawCanvas.classList.remove('active');
+        drawBtn.innerHTML = '🖍️ Desenhar ▾';
+        drawMenu.classList.remove('open');
+    } else {
+        // Intercala o menu open/close
+        drawMenu.classList.toggle('open');
+    }
+});
+
+// Ativa modo de desenho ao fechar o menu (se escolhido)
+document.addEventListener('click', (e) => {
+    if (!drawBtn.contains(e.target) && !drawMenu.contains(e.target)) {
+        drawMenu.classList.remove('open');
+    }
+});
+
+// Seleção de cor do desenho
+document.getElementById('drawColors').addEventListener('click', (e) => {
+    if(e.target.classList.contains('color-btn')) {
+        document.querySelectorAll('#drawColors .color-btn').forEach(b => b.classList.remove('selected'));
+        e.target.classList.add('selected');
+        currentDrawColor = e.target.dataset.color;
+        
+        // Ativa modo desenho automaticamente
+        isDrawMode = true;
+        drawCanvas.classList.add('active');
+        drawBtn.innerHTML = '🖍️ Ativo ▾';
+    }
+});
+
+document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape') {
+        isDrawMode = false;
+        drawCanvas.classList.remove('active');
+        drawBtn.innerHTML = '🖍️ Desenhar ▾';
+        highlightPopup.classList.remove('open');
+    }
+});
+
+document.getElementById('clearDrawingsBtn').addEventListener('click', () => {
+    if (annotations.drawings[currentPage]) {
+        annotations.drawings[currentPage] = [];
+        saveAnnotations();
+        renderAnnotations(currentPage);
+    }
+});
+
+document.getElementById('drawThickness').addEventListener('input', (e) => {
+    currentThickness = parseInt(e.target.value);
+});
+
+drawCanvas.addEventListener('mousedown', (e) => {
+    if (!isDrawMode) return;
+    isDrawing = true;
+    const rect = drawCanvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / currentScale;
+    const y = (e.clientY - rect.top) / currentScale;
+    currentPath = [[x, y]];
+});
+
+drawCanvas.addEventListener('mousemove', (e) => {
+    if (!isDrawing) return;
+    const rect = drawCanvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / currentScale;
+    const y = (e.clientY - rect.top) / currentScale;
+    currentPath.push([x, y]);
+    
+    // Feedback visual
+    drawCtx.lineTo(x * currentScale, y * currentScale);
+    drawCtx.strokeStyle = currentDrawColor;
+    drawCtx.lineWidth = currentThickness * currentScale;
+    drawCtx.lineCap = 'round';
+    drawCtx.lineJoin = 'round';
+    drawCtx.stroke();
+    drawCtx.beginPath();
+    drawCtx.moveTo(x * currentScale, y * currentScale);
+});
+
+drawCanvas.addEventListener('mouseup', () => {
+    if (!isDrawing) return;
+    isDrawing = false;
+    if (currentPath.length > 1) {
+        if (!annotations.drawings[currentPage]) annotations.drawings[currentPage] = [];
+        annotations.drawings[currentPage].push({
+            color: currentDrawColor,
+            thickness: currentThickness,
+            paths: currentPath
+        });
+        saveAnnotations();
+    }
+    renderAnnotations(currentPage); // limpa o caminho e renderiza tudo limpo
+});
+
+drawCanvas.addEventListener('mouseout', () => {
+    if(isDrawing) drawCanvas.dispatchEvent(new MouseEvent('mouseup'));
+});
+
+// --- HIGHLIGHTS ---
+let lastSelectionRects = [];
+let lastSelectionText = '';
+
+document.getElementById('pageWrapper').addEventListener('mouseup', (e) => {
+    if (isDrawMode) return;
     setTimeout(async () => {
-        const selectedText = window.getSelection().toString().trim();
+        const selection = window.getSelection();
+        const selectedText = selection.toString().trim();
         
         if (selectedText.length > 0) {
+            // Configurar popup de highlight
+            const range = selection.getRangeAt(0);
+            const rects = range.getClientRects();
+            const wrapperRect = document.getElementById('pageWrapper').getBoundingClientRect();
+            
+            // Posição para o popup (em relação ao viewport, já que o popup é fixed/absolute no body)
+            const lastRect = rects[rects.length - 1];
+            highlightPopup.style.left = (lastRect.right + 5) + 'px';
+            highlightPopup.style.top = (lastRect.bottom + 5) + 'px';
+            highlightPopup.classList.add('open');
+
+            lastSelectionText = selectedText;
+            lastSelectionRects = [];
+            for(let rect of rects) {
+                lastSelectionRects.push([
+                    (rect.left - wrapperRect.left) / currentScale,
+                    (rect.top - wrapperRect.top) / currentScale,
+                    rect.width / currentScale,
+                    rect.height / currentScale
+                ]);
+            }
+            
+            // Lógica lateral original
             if (!sidebar.classList.contains('open')) {
                 sidebar.classList.add('open');
             }
             
-            // Usamos textContent em vez de value
             sourceTextArea.textContent = selectedText;
             translatedTextArea.textContent = "Traduzindo...";
             
-            // Chama a classe de tradução
             const translatedResult = await translator.translate(selectedText, 'en', 'pt-br');
-            
-            // Usamos textContent em vez de value
             translatedTextArea.textContent = translatedResult;
+        } else {
+            highlightPopup.classList.remove('open');
         }
     }, 100);
 });
 
+document.addEventListener('mousedown', (e) => {
+    if(!highlightPopup.contains(e.target)) {
+        highlightPopup.classList.remove('open');
+    }
+});
+
+// Ações do Popup de Highlight
+document.getElementById('hlColors').addEventListener('click', (e) => {
+    if(e.target.classList.contains('color-btn')) {
+        const color = e.target.dataset.color;
+        
+        if (color !== 'none') {
+            if (!annotations.highlights[currentPage]) annotations.highlights[currentPage] = [];
+            annotations.highlights[currentPage].push({
+                color: color,
+                text: lastSelectionText,
+                rects: lastSelectionRects
+            });
+            saveAnnotations();
+            renderAnnotations(currentPage);
+        } else {
+             if (annotations.highlights[currentPage]) {
+                // Remove destaques se a seleção de texto atual contiver ou estiver contida no texto destacado
+                annotations.highlights[currentPage] = annotations.highlights[currentPage].filter(hl => 
+                    !(lastSelectionText.includes(hl.text) || hl.text.includes(lastSelectionText))
+                );
+                saveAnnotations();
+                renderAnnotations(currentPage);
+            }
+        }
+        
+        window.getSelection().removeAllRanges();
+        highlightPopup.classList.remove('open');
+    }
+});
+
 // ==========================================
-// 6. MODAL DE CONFIGURAÇÕES
+// 8. MODAL DE CONFIGURAÇÕES
 // ==========================================
 const settingsModal = document.getElementById('settingsModal');
 const settingsBtn = document.getElementById('settingsBtn');
