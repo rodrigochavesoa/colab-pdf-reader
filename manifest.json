@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Colab PDF Viewer",
+  "name": "Colab PDF Reader & Translator",
   "version": "1.0.0",
   "description": "Lembra a última página de PDFs locais e traduz textos instantaneamente.",
   "permissions": [
@@ -20,7 +20,17 @@
     "type": "module"    
   },
   "action": {
-    "default_popup": "viewer.html"
+    "default_popup": "viewer.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    } 
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
   },
   "browser_specific_settings": {
     "gecko": {

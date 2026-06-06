@@ -144,10 +144,9 @@ colab-pdf-reader/
 ├── viewer.js                  # Lógica core (renderização, zoom, storage)
 ├── config.js                  # Configuração de dados sensíveis (API-KEY)
 ├── config_example.js          # Arquivo modelo para transformar em config.js
-├── icon16.png                 # Icon16  pre-set
-├── icon48.png                 # Icon48  pre-set
-├── icon128.png                # Icon128 pre-set
-├── icon150.png                # Icon150 pre-set
+├── icon16.png                 # Icon16  pre-set para o manifest.json  
+├── icon48.png                 # Icon48  pre-set para o manifest.json
+├── icon128.png                # Icon128 pre-set para o manifest.json
 
 │
 ├── pdf.min.js                 # PDF.js Core (Mozilla)
