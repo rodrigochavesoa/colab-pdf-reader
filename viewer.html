@@ -23,6 +23,7 @@
             --hl-blue: #70d8ff;
             --hl-pink: #f5a8da;
             --hl-red: #ff6a6a;
+            --hl-black: #000000;
         }
         
         .toolbar {
@@ -64,6 +65,7 @@
         .textLayer { direction: ltr; }
         .textLayer span { user-select: text; pointer-events: all; }
         .textLayer ::selection { background: rgba(0, 120, 212, 0.35) !important; }
+        .disable-selection .textLayer span { pointer-events: none !important; }
 
         /* --- FERRAMENTAS --- */
         .color-picker { display: flex; gap: 8px; margin-bottom: 10px; }
@@ -97,6 +99,90 @@
         .highlight-rect { position: absolute; pointer-events: none; opacity: 1; }
         .draw-canvas { position: absolute; top: 0; left: 0; z-index: 5; pointer-events: none; }
         .draw-canvas.active { pointer-events: all; cursor: crosshair; }
+        
+        .pdf-text-annotation-container {
+            position: absolute;
+            z-index: 6;
+        }
+        .pdf-text-annotation {
+            position: relative;
+            background: transparent;
+            color: #ff6a6a;
+            font-size: 16px;
+            font-weight: bold;
+            font-family: inherit;
+            border: 1px dashed transparent;
+            outline: none;
+            padding: 2px;
+            margin: 0;
+            cursor: pointer;
+            white-space: pre-wrap;
+            user-select: none;
+            min-width: 20px;
+            min-height: 20px;
+        }
+        .pdf-text-annotation:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(0, 0, 0, 0.2);
+        }
+        .pdf-text-annotation.editing {
+            border-color: #00ca4e;
+            background: rgba(0, 0, 0, 0.6);
+            color: white !important;
+            cursor: text;
+        }
+        .text-delete-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            padding: 0;
+            z-index: 7;
+        }
+        .text-drag-handle {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            background: #3e3e42;
+            color: #ccc;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            cursor: grab;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            padding: 0;
+            z-index: 7;
+        }
+        .text-drag-handle:active {
+            cursor: grabbing;
+        }
+        .pdf-text-annotation-container:hover .text-delete-btn,
+        .pdf-text-annotation-container:hover .text-drag-handle {
+            display: flex;
+        }
+        .text-delete-btn:hover { background: #ff6b81; transform: scale(1.1); }
+        .text-drag-handle:hover { background: #555; transform: scale(1.1); }
+
+        .pdf-text-annotation-layer {
+            position: absolute; top: 0; left: 0; pointer-events: none; width: 100%; height: 100%; z-index: 6;
+        }
+        .pdf-text-annotation-layer > * { pointer-events: auto; }
 
         .sidebar {
             width: 0; background-color: #252526; border-left: 1px solid #3e3e42;
@@ -163,14 +249,15 @@
 <body>
    <div class="toolbar">
         <button id="drawBtn" title="Anotações Livre">🖍️ Desenhar ▾</button>
+        <button id="addTextBtn" title="Adicionar Texto" style="margin-left: -5px;">📝 Texto ▾</button>
         <div class="draw-menu" id="drawMenu">
             <label>Cores</label>
             <div class="color-picker" id="drawColors">
                 <div class="color-btn selected" style="background: var(--hl-yellow)" data-color="#fced6e"></div>
                 <div class="color-btn" style="background: var(--hl-green)" data-color="#7cfb62"></div>
                 <div class="color-btn" style="background: var(--hl-blue)" data-color="#70d8ff"></div>
-                <div class="color-btn" style="background: var(--hl-pink)" data-color="#f5a8da"></div>
                 <div class="color-btn" style="background: var(--hl-red)" data-color="#ff6a6a"></div>
+                <div class="color-btn" style="background: var(--hl-black)" data-color="#000000"></div>
             </div>
             <label style="margin-top: 10px;">Espessura</label>
             <input type="range" class="thickness-slider" id="drawThickness" min="1" max="10" value="4">
@@ -180,6 +267,21 @@
             <button id="clearDrawingsBtn" style="margin-top: 15px; padding: 5px; font-size: 12px; background: #e74c3c; color: white;">🗑️ Limpar Desenhos da Página</button>
         </div>
 
+        <div class="draw-menu" id="textMenu" style="left: 135px;">
+            <label>Cor do Texto</label>
+            <div class="color-picker" id="textColors">
+                <div class="color-btn" style="background: var(--hl-yellow)" data-color="#fced6e"></div>
+                <div class="color-btn" style="background: var(--hl-green)" data-color="#7cfb62"></div>
+                <div class="color-btn" style="background: var(--hl-blue)" data-color="#70d8ff"></div>
+                <div class="color-btn selected" style="background: var(--hl-red)" data-color="#ff6a6a"></div>
+                <div class="color-btn" style="background: var(--hl-black)" data-color="#000000"></div>
+            </div>
+            <label style="margin-top: 10px;">Tamanho da Fonte</label>
+            <input type="range" class="thickness-slider" id="textFontSize" min="10" max="64" value="16">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: #888;">
+                <span>Pequeno</span><span id="textSizeDisplay" style="font-weight:bold; color: white;">16px</span><span>Grande</span>
+            </div>
+        </div>
         <span class="book-title" id="bookTitle" style="margin-left: 15px;">Carregando livro...</span>
         
         <div class="controls-center">
@@ -203,6 +305,7 @@
                 <canvas id="pdfCanvas"></canvas>
                 <div id="highlightsLayer" style="position: absolute; top: 0; left: 0; pointer-events: none; mix-blend-mode: multiply;"></div>
                 <canvas id="drawCanvas" class="draw-canvas"></canvas>
+                <div id="textAnnotationsLayer" class="pdf-text-annotation-layer"></div>
                 <div id="textLayer" class="textLayer" style="z-index: 2;"></div>
             </div>
         </div>
@@ -220,8 +323,8 @@
                         <div class="color-btn" style="background: var(--hl-yellow)" data-color="#fced6e"></div>
                         <div class="color-btn" style="background: var(--hl-green)" data-color="#7cfb62"></div>
                         <div class="color-btn" style="background: var(--hl-blue)" data-color="#70d8ff"></div>
-                        <div class="color-btn" style="background: var(--hl-pink)" data-color="#f5a8da"></div>
                         <div class="color-btn" style="background: var(--hl-red)" data-color="#ff6a6a"></div>
+                        <div class="color-btn" style="background: var(--hl-black)" data-color="#000000"></div>
                         <div class="color-btn color-btn-none" data-color="none" title="Remover" style="margin-left: auto;"></div>
                     </div>
                 </div>

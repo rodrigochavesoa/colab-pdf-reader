@@ -17,6 +17,12 @@ const ctx = canvas.getContext('2d');
 const wrapper = document.getElementById('pageWrapper');
 const textLayerEl = document.getElementById('textLayer');
 
+// Elementos das novas camadas de anotação
+const drawCanvas = document.getElementById('drawCanvas');
+const drawCtx = drawCanvas ? drawCanvas.getContext('2d') : null;
+const highlightsLayer = document.getElementById('highlightsLayer');
+const textAnnotationsLayer = document.getElementById('textAnnotationsLayer');
+
 // ==========================================
 // 2. GERENCIAMENTO DE CONFIGURAÇÕES (Storage + Fallback config.js)
 // ==========================================
@@ -153,39 +159,17 @@ class TranslatorService {
     }
 }
 
-// Inicializa o tradutor (será chamado após loadTranslatorSettings)
-initTranslator();
-
 // ==========================================
 // 3. RENDERIZAÇÃO DO PDF E PERSISTÊNCIA
 // ==========================================
-if (BOOK_ID) {
-    const fileName = decodeURIComponent(BOOK_ID).split('/').pop();
-    document.getElementById('bookTitle').textContent = fileName;
-
-    pdfjsLib.getDocument(BOOK_ID).promise.then((pdfDoc_) => {
-        pdfDoc = pdfDoc_;
-        document.getElementById('totalPages').textContent = pdfDoc.numPages;
-        
-        document.getElementById('nextBtn').disabled = false;
-        document.getElementById('prevBtn').disabled = false;
-
-        chrome.storage.local.get([BOOK_ID], (result) => {
-            if (result[BOOK_ID] && result[BOOK_ID] <= pdfDoc.numPages) {
-                currentPage = result[BOOK_ID];
-            }
-            loadAnnotations();
-            renderPage(currentPage);
-        });
-    }).catch(err => {
-        console.error("Erro ao abrir PDF:", err);
-        document.getElementById('bookTitle').textContent = "Erro ao carregar o arquivo local.";
-    });
-}
-
 function renderPage(num) {
     pageRendering = true;
     document.getElementById('pageNumber').value = num;
+
+    // Limpa as anotações antigas imediatamente da tela (evita o "ghosting")
+    if (typeof drawCtx !== 'undefined') drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+    if (typeof highlightsLayer !== 'undefined') highlightsLayer.innerHTML = '';
+    if (typeof textAnnotationsLayer !== 'undefined') textAnnotationsLayer.innerHTML = '';
     
     pdfDoc.getPage(num).then((page) => {
         const viewport = page.getViewport({ scale: currentScale });
@@ -218,6 +202,19 @@ function renderPage(num) {
         }).then(() => {
             pageRendering = false;
             saveProgress(num);
+
+            // Redimensiona sobreposições pelas medidas obtidas
+            if (typeof drawCanvas !== 'undefined') {
+                drawCanvas.width = canvas.width;
+                drawCanvas.height = canvas.height;
+                highlightsLayer.style.width = canvas.width + 'px';
+                highlightsLayer.style.height = canvas.height + 'px';
+                textAnnotationsLayer.style.width = canvas.width + 'px';
+                textAnnotationsLayer.style.height = canvas.height + 'px';
+                
+                // Restaura as anotações da página logo que ela existir
+                renderAnnotations(num);
+            }
         }).catch(err => {
             console.error("Erro na renderização:", err);
             pageRendering = false;
@@ -352,26 +349,30 @@ document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
 // ==========================================
 let annotations = {
     highlights: {}, // pageNumber -> [ { color, rects: [[x,y,w,h]] } ]
-    drawings: {}    // pageNumber -> [ { color, thickness, paths: [[x,y], ...] } ]
+    drawings: {},   // pageNumber -> [ { color, thickness, paths: [[x,y], ...] } ]
+    texts: {}       // pageNumber -> [ { text, color, x, y, fontSize } ]
 };
 
 let isDrawMode = false;
+let isTextMode = false;
+let currentTextColor = '#ff6a6a';
+let currentTextSize = 16;
 let currentDrawColor = '#fced6e';
 let currentThickness = 4;
 
 const drawBtn = document.getElementById('drawBtn');
 const drawMenu = document.getElementById('drawMenu');
-const drawCanvas = document.getElementById('drawCanvas');
-const drawCtx = drawCanvas.getContext('2d');
-const highlightsLayer = document.getElementById('highlightsLayer');
 
 // Carregar anotações
 function loadAnnotations() {
     if (!BOOK_ID) return;
     chrome.storage.local.get([`ann_${BOOK_ID}`], (result) => {
-        if (result[`ann_${BOOK_ID}`]) {
-            annotations = result[`ann_${BOOK_ID}`];
-        }
+        const saved = result[`ann_${BOOK_ID}`] || {};
+        annotations = {
+            highlights: saved.highlights || {},
+            drawings: saved.drawings || {},
+            texts: saved.texts || {}
+        };
         renderAnnotations(currentPage);
     });
 }
@@ -419,40 +420,182 @@ function renderAnnotations(pageNum) {
             highlightsLayer.appendChild(div);
         });
     });
-}
 
-// Atualizar tamanhos quando renderiza página
-const originalRenderPage = renderPage;
-renderPage = function(num) {
-    
-    // Limpa as anotações antigas imediatamente da tela (evita o "ghosting")
-    drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
-    highlightsLayer.innerHTML = '';
-    
-    originalRenderPage(num);
-    
-    // Aguarda a renderização do framework original concluir
-    const checkInterval = setInterval(() => {
-        if (!pageRendering) {
-            clearInterval(checkInterval);
+    // Configura Textos
+    textAnnotationsLayer.innerHTML = '';
+    const pageTexts = annotations.texts[pageNum] || [];
+    pageTexts.forEach((tData, index) => {
+        const container = document.createElement('div');
+        container.className = 'pdf-text-annotation-container';
+        container.style.left = (tData.x * currentScale) + 'px';
+        container.style.top = (tData.y * currentScale) + 'px';
+        
+        // Define fallback fontsize (16) if undefined (older texts)
+        const size = tData.fontSize || 16; 
+
+        const div = document.createElement('div');
+        div.className = 'pdf-text-annotation';
+        div.style.fontSize = (size * currentScale) + 'px';
+        div.style.color = tData.color;
+        div.innerText = tData.text;
+        div.dataset.index = index;
+        
+        const dragHandle = document.createElement('button');
+        dragHandle.className = 'text-drag-handle';
+        dragHandle.innerHTML = '⠿';
+        dragHandle.title = "Mover texto";
+        
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+        
+        dragHandle.addEventListener('mousedown', (e) => {
+            if (div.isContentEditable) return;
+            e.preventDefault();
+            e.stopPropagation();
+            isDragging = true;
             
-            // Redimensiona sobreposições pelas medidas obtidas
-            drawCanvas.width = canvas.width;
-            drawCanvas.height = canvas.height;
-            highlightsLayer.style.width = canvas.width + 'px';
-            highlightsLayer.style.height = canvas.height + 'px';
+            const rect = container.getBoundingClientRect();
+            dragOffset.x = e.clientX - rect.left;
+            dragOffset.y = e.clientY - rect.top;
             
-            // Restaura as anotações da página logo que ela existir
-            renderAnnotations(num);
-        }
-    }, 50); 
+            const mouseMoveHandler = (ev) => {
+                if (!isDragging) return;
+                const wrapperRect = document.getElementById('pageWrapper').getBoundingClientRect();
+                
+                let newX = ev.clientX - wrapperRect.left - dragOffset.x;
+                let newY = ev.clientY - wrapperRect.top - dragOffset.y;
+                
+                // Boundaries clamp (optional but good)
+                if (newX < 0) newX = 0;
+                if (newY < 0) newY = 0;
+                
+                container.style.left = newX + 'px';
+                container.style.top = newY + 'px';
+            };
+            
+            const mouseUpHandler = (ev) => {
+                if (!isDragging) return;
+                isDragging = false;
+                document.removeEventListener('mousemove', mouseMoveHandler);
+                document.removeEventListener('mouseup', mouseUpHandler);
+                
+                // Save new position
+                const newX = parseFloat(container.style.left) / currentScale;
+                const newY = parseFloat(container.style.top) / currentScale;
+                
+                annotations.texts[pageNum][index].x = newX;
+                annotations.texts[pageNum][index].y = newY;
+                saveAnnotations();
+            };
+            
+            document.addEventListener('mousemove', mouseMoveHandler);
+            document.addEventListener('mouseup', mouseUpHandler);
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'text-delete-btn';
+        delBtn.innerHTML = '🗑️';
+        delBtn.title = "Excluir texto";
+        
+        // Clique na lixeira para excluir
+        delBtn.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // Evita perder foco antes de deletar
+            e.stopPropagation();
+            
+            // Se estiver editando, desativa o blur pra não sobrepor
+            div.onblur = null; 
+            
+            annotations.texts[pageNum].splice(index, 1);
+            saveAnnotations();
+            renderAnnotations(pageNum);
+        });
+
+        // Clique no próprio texto o torna editável novamente (re-edição)
+        div.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (div.isContentEditable) return; // Já está editando
+
+            div.contentEditable = true;
+            div.classList.add('editing');
+            div.focus();
+            
+            // Move cursor pro final
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.selectNodeContents(div);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+
+            const saveEditedText = () => {
+                let newText = div.innerText.trim();
+                div.contentEditable = false;
+                div.classList.remove('editing');
+
+                if (newText.length > 0) {
+                    annotations.texts[pageNum][index].text = newText;
+                    saveAnnotations();
+                } else {
+                    // Texto ficou vazio, exclui a anotação
+                    annotations.texts[pageNum].splice(index, 1);
+                    saveAnnotations();
+                    renderAnnotations(pageNum);
+                }
+            };
+            
+            // Remove antigos eventos pra não empilhar caso clique fora e dentro de novo
+            div.onblur = saveEditedText;
+            div.onkeydown = (ev) => {
+                if (ev.key === 'Escape' || (ev.key === 'Enter' && !ev.shiftKey)) {
+                    ev.preventDefault();
+                    div.blur(); // Salva
+                }
+            };
+        });
+        
+        container.appendChild(dragHandle);
+        container.appendChild(div);
+        container.appendChild(delBtn);
+        textAnnotationsLayer.appendChild(container);
+    });
 }
 
 // --- DESENHO ---
 let isDrawing = false;
 let currentPath = [];
 
+const addTextBtn = document.getElementById('addTextBtn');
+const textMenu = document.getElementById('textMenu');
+const textSizeDisplay = document.getElementById('textSizeDisplay');
+
+addTextBtn.addEventListener('click', () => {
+    isTextMode = !isTextMode;
+    const textLayer = document.getElementById('textLayer');
+    if (isTextMode) {
+        addTextBtn.innerHTML = '📝 Ativo ▾';
+        textMenu.classList.add('open');
+        isDrawMode = false;
+        drawCanvas.classList.remove('active');
+        drawBtn.innerHTML = '🖍️ Desenhar ▾';
+        drawMenu.classList.remove('open');
+        document.getElementById('pageWrapper').style.cursor = 'text';
+        document.getElementById('pageWrapper').classList.add('disable-selection');
+    } else {
+        addTextBtn.innerHTML = '📝 Texto ▾';
+        textMenu.classList.remove('open');
+        document.getElementById('pageWrapper').style.cursor = 'default';
+        document.getElementById('pageWrapper').classList.remove('disable-selection');
+    }
+});
+
 drawBtn.addEventListener('click', (e) => {
+    if (isTextMode) {
+        isTextMode = false;
+        addTextBtn.innerHTML = '📝 Texto ▾';
+        textMenu.classList.remove('open');
+        document.getElementById('pageWrapper').style.cursor = 'default';
+        document.getElementById('pageWrapper').classList.remove('disable-selection');
+    }
     if (isDrawMode) {
         // Desativa o modo de desenho
         isDrawMode = false;
@@ -470,6 +613,25 @@ document.addEventListener('click', (e) => {
     if (!drawBtn.contains(e.target) && !drawMenu.contains(e.target)) {
         drawMenu.classList.remove('open');
     }
+    if (!addTextBtn.contains(e.target) && !textMenu.contains(e.target)) {
+        if (isTextMode && e.target.closest('#pageWrapper') === null) {
+             textMenu.classList.remove('open');
+        }
+    }
+});
+
+// Seleção de cor e tamanho do texto
+document.getElementById('textColors').addEventListener('click', (e) => {
+    if(e.target.classList.contains('color-btn')) {
+        document.querySelectorAll('#textColors .color-btn').forEach(b => b.classList.remove('selected'));
+        e.target.classList.add('selected');
+        currentTextColor = e.target.dataset.color;
+    }
+});
+
+document.getElementById('textFontSize').addEventListener('input', (e) => {
+    currentTextSize = parseInt(e.target.value);
+    textSizeDisplay.textContent = currentTextSize + 'px';
 });
 
 // Seleção de cor do desenho
@@ -479,10 +641,12 @@ document.getElementById('drawColors').addEventListener('click', (e) => {
         e.target.classList.add('selected');
         currentDrawColor = e.target.dataset.color;
         
-        // Ativa modo desenho automaticamente
-        isDrawMode = true;
-        drawCanvas.classList.add('active');
-        drawBtn.innerHTML = '🖍️ Ativo ▾';
+        if (!isTextMode) {
+            // Ativa modo desenho automaticamente apenas se não estiver no modo texto
+            isDrawMode = true;
+            drawCanvas.classList.add('active');
+            drawBtn.innerHTML = '🖍️ Ativo ▾';
+        }
     }
 });
 
@@ -552,12 +716,75 @@ drawCanvas.addEventListener('mouseout', () => {
     if(isDrawing) drawCanvas.dispatchEvent(new MouseEvent('mouseup'));
 });
 
-// --- HIGHLIGHTS ---
+// --- HIGHLIGHTS E TEXTOS ---
+document.getElementById('pageWrapper').addEventListener('click', (e) => {
+    if (!isTextMode || e.target.classList.contains('pdf-text-annotation')) return;
+    
+    const wrapperRect = document.getElementById('pageWrapper').getBoundingClientRect();
+    const startX = (e.clientX - wrapperRect.left) / currentScale;
+    const startY = (e.clientY - wrapperRect.top) / currentScale;
+    
+    // Choose color from currently selected in text menu
+    const selectedColor = currentTextColor;
+    const selectedSize = currentTextSize;
+
+    const container = document.createElement('div');
+    container.className = 'pdf-text-annotation-container';
+    container.style.left = (startX * currentScale) + 'px';
+    container.style.top = (startY * currentScale) + 'px';
+    
+    const div = document.createElement('div');
+    div.contentEditable = true;
+    div.className = 'pdf-text-annotation editing';
+    div.style.fontSize = (selectedSize * currentScale) + 'px';
+    div.style.color = selectedColor;
+    
+    container.appendChild(div);
+    textAnnotationsLayer.appendChild(container);
+    div.focus();
+    
+    // Focus in timeout to guarantee it handles the event loop properly
+    setTimeout(() => {
+        div.focus();
+    }, 10);
+    
+    const saveNewText = () => {
+        if (!container.parentElement) return; 
+        let text = div.innerText.trim();
+        div.contentEditable = false;
+        div.classList.remove('editing');
+        
+        if (text.length > 0) {
+            if (!annotations.texts[currentPage]) annotations.texts[currentPage] = [];
+            annotations.texts[currentPage].push({
+                text: text,
+                color: selectedColor,
+                fontSize: selectedSize,
+                x: startX,
+                y: startY
+            });
+            saveAnnotations();
+        }
+        
+        // Remove o container de criação e deixa a renderização recriar limpo
+        container.remove();
+        renderAnnotations(currentPage);
+    };
+
+    div.addEventListener('blur', saveNewText);
+    div.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' || (e.key === 'Enter' && !e.shiftKey)) {
+            e.preventDefault();
+            div.blur(); 
+        }
+    });
+});
+
 let lastSelectionRects = [];
 let lastSelectionText = '';
 
 document.getElementById('pageWrapper').addEventListener('mouseup', (e) => {
-    if (isDrawMode) return;
+    if (isDrawMode || isTextMode) return;
     setTimeout(async () => {
         const selection = window.getSelection();
         const selectedText = selection.toString().trim();
@@ -702,7 +929,31 @@ settingsModal.addEventListener('click', (e) => {
     if (e.target === settingsModal) closeSettingsModalFn();
 });
 
-// Inicialização: carrega settings do storage
+// Inicialização: carrega settings do storage e abre o PDF
 loadAllSettings().then(() => {
     initTranslator();
+
+    if (BOOK_ID) {
+        const fileName = decodeURIComponent(BOOK_ID).split('/').pop();
+        document.getElementById('bookTitle').textContent = fileName;
+
+        pdfjsLib.getDocument(BOOK_ID).promise.then((pdfDoc_) => {
+            pdfDoc = pdfDoc_;
+            document.getElementById('totalPages').textContent = pdfDoc.numPages;
+            
+            document.getElementById('nextBtn').disabled = false;
+            document.getElementById('prevBtn').disabled = false;
+
+            chrome.storage.local.get([BOOK_ID], (result) => {
+                if (result[BOOK_ID] && result[BOOK_ID] <= pdfDoc.numPages) {
+                    currentPage = result[BOOK_ID];
+                }
+                loadAnnotations();
+                renderPage(currentPage);
+            });
+        }).catch(err => {
+            console.error("Erro ao abrir PDF:", err);
+            document.getElementById('bookTitle').textContent = "Erro ao carregar o arquivo local.";
+        });
+    }
 });
