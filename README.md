@@ -373,12 +373,14 @@ Durante o desenvolvimento e testes da extensão, documentamos diferenças import
 - [ ] Busca dentro do documento
 - [ ] Modo dark/light automático
 - [ ] Histórico de documentos recentes
+- [ ] Add anotações em texto
 
 ### v2.0.0 (Visão)
 - [ ] Suporte a múltiplos idiomas na interface
 - [ ] Sincronização entre dispositivos (via Google Drive)
 - [ ] API pública para desenvolvedores
 - [ ] Integração com ferramentas de IA (Claude, ChatGPT)
+- [ ] Add Read aloud - com Voice Options
 
 ---
 
