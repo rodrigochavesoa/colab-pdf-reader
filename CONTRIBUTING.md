@@ -634,6 +634,48 @@ Se você está adicionando código de terceiros (bibliotecas, snippets, etc.):
 
 ---
 
+## 🚀 O Futuro: De uma simples Extensão a uma Plataforma de Aprendizado em Golang (Open Source)
+
+Se você chegou até aqui, já deve ter percebido que o Colab PDF Reader resolve um problema chato e muito específico: navegadores não salvam a página de PDFs locais (`file:///*`) e o fluxo de copiar, abrir outra aba, colar no tradutor e voltar para o livro quebra totalmente a concentração.
+
+Essa extensão foi o meu "ponta pé inicial". Ela é um MVP (Produto Mínimo Viável) que construí para resolver uma dor real que eu mesmo sentia ao tentar ler livros técnicos em outros idiomas.
+
+Mas extensões têm um teto de vidro. O ecossistema do `Manifest V3` é isolado, e a longo prazo, se quisermos realmente ajudar as pessoas a aprenderem idiomas enquanto leem, precisamos de algo muito mais robusto. É por isso que o futuro deste projeto não mora apenas no navegador. Ele vai virar uma Aplicação Web completa, e é aqui que o jogo fica interessante para quem gosta de arquitetura de software e quer colocar a mão na massa.
+
+**A Visão Técnica: O Pulo do Gato na Arquitetura**
+
+A transição de uma extensão para um Web App geralmente traz um problema financeiro grave quando se lida com PDFs: custo de infraestrutura. Se o usuário quiser ler um livro de 100MB, fazer o upload desse arquivo para o nosso servidor custaria banda, e armazenar isso custaria banco de dados.
+
+A solução arquitetônica que desenhei para o futuro do projeto resolve isso usando o melhor do Client-side. Nós vamos usar a `FileReader API` do JavaScript para carregar o PDF do usuário diretamente na memória RAM da aba do navegador (em um *ArrayBuffer*), passando direto para o motor do PDF.js.
+
+O que isso significa na prática?
+
+1. **Custo zero de storage:** O arquivo nunca toca no nosso servidor.
+2. **Privacidade absoluta:** O livro (ou documento sensível) do usuário não sai da máquina dele.
+3. **Performance instantânea:** Não existe tempo de upload.
+
+**Onde entra o Backend em Go (Golang)?**
+
+Se o arquivo fica no frontend, o que o servidor faz? Ele faz o que realmente tem valor: gerencia o conhecimento.
+
+A ideia é subir um backend em **Go** conectado a um banco **PostgreSQL**. Quando o usuário selecionar uma frase no PDF e traduzi-la no frontend, ele terá a opção de salvar essa tradução com um clique. O nosso servidor Go vai receber essa requisição guardando três coisas: a palavra original, a tradução e o *contexto* (a frase inteira onde aquela palavra estava inserida).
+
+Com isso no banco de dados, poderemos construir um sistema interno de **Flashcards com Repetição Espaçada** (algo nos moldes do Anki, mas nativo). O usuário não estará apenas traduzindo para entender na hora; ele estará gerando o próprio material de estudo de forma passiva enquanto lê.
+
+**Por que estou abrindo isso para a comunidade?**
+
+Eu comecei esse projeto para resolver um incômodo, mas hoje o meu foco principal é aprimorar as minhas habilidades de programação e arquitetura. Quero mergulhar fundo no ecossistema Go, entender melhor as dinâmicas de projetos Open Source reais e escrever código que escala.
+
+Eu não quero construir essa plataforma sozinho em um quarto escuro. O aprendizado real acontece quando o código é revisado por quem sabe mais, e quando ensinamos quem sabe menos.
+
+Existem milhares de pessoas no mercado que travam na carreira por não conseguirem consumir conteúdo técnico em inglês. A dor é real. O produto faz sentido.
+
+Se você curte Go, quer treinar React/Vanilla JS, gosta de UX/UI ou simplesmente quer participar da concepção de uma arquitetura limpa (que não gasta rios de dinheiro com AWS porque delega o processamento pesado para o client), o repositório está de portas abertas.
+
+Vamos discutir padrões de projeto, quebrar a cabeça com as rotas no Go, melhorar a renderização do PDF.js no client e criar uma ferramenta que as pessoas realmente queiram usar todos os dias.
+
+Dê uma olhada no código atual, abra uma *Issue*, puxe uma cadeira na aba *Discussions* e bora construir isso juntos.
+
 ## 🙏 Obrigado por Contribuir!
 
 Cada contribuição, por menor que seja, faz diferença. Estamos ansiosos para trabalhar com você e tornar o **Colab PDF Reader** ainda melhor!
