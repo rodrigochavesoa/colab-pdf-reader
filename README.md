@@ -509,6 +509,7 @@ A extensão utiliza Web Workers (pdf.worker.min.js) que podem ser interpretados 
 "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'"
   }
+```
 
 Dica de Desenvolvimento:
 Recomendamos manter uma pasta separada (ex: project_firefox_dist) exclusivamente para a compilação desta versão, isolando-a do ficheiro .zip gerado para o Chrome e Edge.
@@ -518,7 +519,7 @@ NOTE :
 4. Opera, Brave e Vivaldi (Ecossistema Chromium):
 Não precisa de alterar nada.
 O Opera e estes outros navegadores partilham exatamente o mesmo motor base do Chrome e do Edge. Isto significa que o ficheiro .zip que acabou de gerar (sem o blob: e sem o fallback de scripts) vai funcionar na perfeição na loja de extensões do Opera. As regras rígidas de segurança aplicam-se igualmente a todos eles.
-```
+
 ---
 
 **Desenvolvido com carinho para leitores, pesquisadores e desenvolvedores que entendem o valor da produtividade.**
