@@ -40,6 +40,12 @@
             position: absolute; left: 50%; transform: translateX(-50%);
         }
         .page-info { font-size: 18px; font-weight: bold; color: #00ca4e; }
+        .page-input { 
+            width: 60px; background: #1e1e1e; border: 1px solid #3e3e42; color: #00ca4e; 
+            font-weight: bold; font-size: 18px; text-align: center; border-radius: 4px; padding: 2px;
+        }
+        .page-input:focus { outline: none; border-color: #00ca4e; background: #252526; }
+        .page-input::-webkit-inner-spin-button, .page-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         button { background-color: #fafbfc; color: rgb(94, 92, 92); border: none; padding: 6px 15px; cursor: pointer; border-radius: 4px; font-weight: bold; }
         button:hover { background-color: #c9e8ff; }
         button:disabled { background-color: #555; cursor: not-allowed; }
@@ -182,7 +188,7 @@
             <button id="zoomInBtn" title="Aumentar Zoom">➕</button>
             
             <button id="prevBtn" disabled>⬅️ Anterior</button>
-            <span class="page-info">Pág: <span id="pageNumber">1</span> / <span id="totalPages">?</span></span>
+            <span class="page-info">Pág: <input type="number" id="pageNumber" value="1" min="1" class="page-input"> / <span id="totalPages">?</span></span>
             <button id="nextBtn" disabled>Próxima ➡️</button>
         </div>
         

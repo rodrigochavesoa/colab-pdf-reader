@@ -185,7 +185,7 @@ if (BOOK_ID) {
 
 function renderPage(num) {
     pageRendering = true;
-    document.getElementById('pageNumber').textContent = num;
+    document.getElementById('pageNumber').value = num;
     
     pdfDoc.getPage(num).then((page) => {
         const viewport = page.getViewport({ scale: currentScale });
@@ -247,6 +247,30 @@ document.getElementById('nextBtn').addEventListener('click', () => {
     currentPage++;
     renderPage(currentPage);
 });
+
+document.getElementById('pageNumber').addEventListener('change', handlePageInput);
+document.getElementById('pageNumber').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.target.blur(); // Triggers change event
+    }
+});
+
+function handlePageInput(e) {
+    let num = parseInt(e.target.value);
+    if (isNaN(num)) num = currentPage;
+    if (num < 1) num = 1;
+    if (num > pdfDoc.numPages) num = pdfDoc.numPages;
+    if (num !== currentPage) {
+        if (!pageRendering) {
+            currentPage = num;
+            renderPage(currentPage);
+        } else {
+            e.target.value = currentPage; // reset if currently rendering to prevent bug
+        }
+    } else {
+        e.target.value = currentPage; // Restore if out of bounds or invalid
+    }
+}
 
 // Atalhos de Teclado (Navegação por Setas e Zoom)
 window.addEventListener('keydown', (e) => {
