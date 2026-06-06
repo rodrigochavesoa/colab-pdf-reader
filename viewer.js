@@ -271,8 +271,8 @@ function handlePageInput(e) {
 
 // Atalhos de Teclado (Navegação por Setas e Zoom)
 window.addEventListener('keydown', (e) => {
-    // Evita disparar atalhos se o usuário estiver digitando em campos de texto ou mudando opções
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    // Evita disparar atalhos se o usuário estiver digitando em campos de texto, mudando opções ou editando anotações
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable) return;
 
     // Navegação por Setas
     if (e.key === 'ArrowRight') {
