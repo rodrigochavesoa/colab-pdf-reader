@@ -604,9 +604,11 @@ Um PR será **merged** quando:
 
 ---
 
-## 📄 Licensing
+## 📄 Licensing 
 
 Ao contribuir para este projeto, você concorda que suas contribuições serão licenciadas sob a mesma **MIT License** do projeto.
+
+📄 **Licença completa:** [LICENSE](./LICENSE)
 
 Se você está adicionando código de terceiros (bibliotecas, snippets, etc.):
 - ✅ Certifique-se de que é **compatível com MIT**

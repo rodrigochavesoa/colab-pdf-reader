@@ -102,9 +102,17 @@ Versão empacotada estará disponível em breve para instalação com um clique.
 | **Destacar (Highlight)** | Selecione o texto e escolha uma cor na **Sidebar** |
 | **Remover Destaque** | Selecione o trecho marcado e clique em "Sem Cor" (ícone proibido) na Sidebar |
 | **Desenho Livre** | Clique em `🖍️ Desenhar`, escolha cor/espessura e anote no PDF |
+| **Texto Editável** | Clique em `📝 Texto`, escolha cor/tamanho e clique na página para inserir texto |
+| **Mover texto** | Arraste o texto criado pela alça ⠿ para reposicioná-lo |
+| **Editar texto** | Clique novamente sobre o texto para alterar o conteúdo |
+| **Excluir texto** | Clique no ícone de lixeira 🗑️ no rótulo do texto |
 | **Sair do Desenho** | Tecla `ESC` ou clique novamente no botão ativo |
 | **Limpar Desenhos** | Opção "Limpar Desenhos da Página" no menu de desenho |
 | **Fechar tradução** | Clique em `✖` no painel lateral |
+
+### Texto e Anotações
+
+Para escrever no PDF, clique no botão `📝 Texto` e abra o menu de texto. Escolha a cor e o tamanho da fonte, depois clique em qualquer ponto da página para inserir um bloco de texto. O texto criado pode ser arrastado pelo ícone de alça, re-editado com um clique e removido com a lixeira.
 
 ### Exemplo de Fluxo
 
@@ -373,7 +381,7 @@ Durante o desenvolvimento e testes da extensão, documentamos diferenças import
 - [ ] Busca dentro do documento
 - [ ] Modo dark/light automático
 - [ ] Histórico de documentos recentes
-- [ ] Add anotações em texto
+- [x] Add anotações em texto
 
 ### v2.0.0 (Visão)
 - [ ] Suporte a múltiplos idiomas na interface
