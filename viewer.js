@@ -1039,7 +1039,9 @@ loadAllSettings().then(() => {
 
     if (BOOK_ID) {
         const fileName = decodeURIComponent(BOOK_ID).split('/').pop();
-        document.getElementById('bookTitle').textContent = fileName;
+        const bookTitleEl = document.getElementById('bookTitle');
+        bookTitleEl.textContent = fileName;
+        bookTitleEl.title = fileName;
 
         pdfjsLib.getDocument(BOOK_ID).promise.then((pdfDoc_) => {
             pdfDoc = pdfDoc_;
@@ -1057,7 +1059,9 @@ loadAllSettings().then(() => {
             });
         }).catch(err => {
             console.error("Erro ao abrir PDF:", err);
-            document.getElementById('bookTitle').textContent = "Erro ao carregar o arquivo local.";
+                const bookTitleEl = document.getElementById('bookTitle');
+                bookTitleEl.textContent = "Erro ao carregar o arquivo local.";
+                bookTitleEl.title = "Erro ao carregar o arquivo local.";
         });
     }
 });
