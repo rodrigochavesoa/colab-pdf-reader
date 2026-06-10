@@ -36,6 +36,8 @@ const DEFAULT_SETTINGS = {
 let translatorSettings = { ...DEFAULT_SETTINGS };
 let folderConfig = { allowlist: [], blocklist: [] };
 let translator = null;
+// Marca se o usuário alterou explicitamente o idioma de destino nesta sessão
+let userChangedTarget = false;
 
 // Carrega configurações: storage > config.js > defaults
 async function loadAllSettings() {
@@ -81,6 +83,30 @@ function initTranslator() {
         translator.azureRegion = translatorSettings.azureRegion;
     }
     console.log('[Translator] Provider:', translatorSettings.provider);
+}
+
+// Força o seletor de origem para 'auto' repetidamente (workaround para restauração do navegador)
+function enforceAutoSource(retries = 6, interval = 150) {
+    try {
+        const sourceSelect = document.getElementById('sourceLangSelect');
+        const swapBtn = document.getElementById('swapLangBtn');
+        if (!sourceSelect) return;
+
+        if (sourceSelect.value !== 'auto') {
+            sourceSelect.value = 'auto';
+        }
+
+        if (swapBtn) {
+            swapBtn.disabled = (sourceSelect.value === 'auto');
+            swapBtn.title = swapBtn.disabled ? 'Impossível inverter quando Origem está em "Detectar auto".' : 'Inverter idiomas';
+        }
+
+        if (retries > 0 && sourceSelect.value !== 'auto') {
+            setTimeout(() => enforceAutoSource(retries - 1, interval), interval);
+        }
+    } catch (e) {
+        // silencioso
+    }
 }
 
 // ==========================================
@@ -401,7 +427,13 @@ const translatorToggleBtn = document.getElementById('translatorToggleBtn');
 if (translatorToggleBtn) {
     translatorToggleBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        sidebar.classList.toggle('open');
+        // If opening, enforce 'Detectar auto' default to avoid restored state
+        if (!sidebar.classList.contains('open')) {
+            enforceAutoSource();
+            sidebar.classList.add('open');
+        } else {
+            sidebar.classList.remove('open');
+        }
     });
 }
 
@@ -1003,8 +1035,9 @@ document.getElementById('pageWrapper').addEventListener('mouseup', (e) => {
                 ]);
             }
             
-            // Lógica lateral original
+            // Lógica lateral original: ao abrir a sidebar, garante 'Detectar auto'
             if (!sidebar.classList.contains('open')) {
+                enforceAutoSource();
                 sidebar.classList.add('open');
             }
             
@@ -1165,7 +1198,8 @@ async function translateSelectedText(text) {
     }
 
     let sourceLang = sourceSelect ? sourceSelect.value : 'auto';
-    const targetLang = (targetSelect && targetSelect.value) ? targetSelect.value : (translatorSettings.targetLang || 'pt-br');
+    // targetLang will be determined after possible detection so we don't lock an outdated value
+    let targetLang = (targetSelect && targetSelect.value) ? targetSelect.value : (translatorSettings.targetLang || 'pt-br');
 
     // If Microsoft provider is selected but no Azure key, fallback to MyMemory to avoid API errors
     let activeTranslator = translator;
@@ -1192,7 +1226,25 @@ async function translateSelectedText(text) {
             const opt = Array.from(sourceSelect.options).find(o => o.value === sourceLang);
             if (opt) sourceSelect.value = sourceLang;
         }
+        // Ensure target is different from detected language for common en <-> pt-br cases
+        try {
+            if (targetSelect && !userChangedTarget) {
+                if (targetSelect.value === sourceLang) {
+                    if (sourceLang === 'en') targetSelect.value = 'pt-br';
+                    else if (sourceLang === 'pt-br') targetSelect.value = 'en';
+                    else {
+                        const fallback = translatorSettings.targetLang || 'pt-br';
+                        targetSelect.value = (fallback === sourceLang) ? (sourceLang === 'en' ? 'pt-br' : 'en') : fallback;
+                    }
+                }
+            }
+            const swapBtnEl = document.getElementById('swapLangBtn');
+            if (swapBtnEl) swapBtnEl.disabled = (sourceSelect && sourceSelect.value === 'auto');
+        } catch (e) { /* silent */ }
     }
+
+    // Recompute targetLang in case detection changed the targetSelect value above
+    targetLang = (targetSelect && targetSelect.value) ? targetSelect.value : (translatorSettings.targetLang || 'pt-br');
 
     translatedTextArea.textContent = 'Traduzindo...';
     try {
@@ -1258,6 +1310,8 @@ function initLanguageControls() {
 
     targetSelect.addEventListener('change', (e) => {
         const newTarget = e.target.value;
+        // user manually changed target for this session
+        userChangedTarget = true;
         // persist
         saveTranslatorSettings({ targetLang: newTarget });
         if (lastSelectionText) translateSelectedText(lastSelectionText);
@@ -1277,6 +1331,9 @@ function initLanguageControls() {
             if (lastSelectionText) translateSelectedText(lastSelectionText);
         });
     }
+
+    // Force 'Detectar auto' as the default (retrying) to avoid browser/extension state restore
+    enforceAutoSource();
 }
 
 // Inicialização: carrega settings do storage e abre o PDF
