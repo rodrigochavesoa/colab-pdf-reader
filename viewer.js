@@ -1167,9 +1167,24 @@ async function translateSelectedText(text) {
     let sourceLang = sourceSelect ? sourceSelect.value : 'auto';
     const targetLang = (targetSelect && targetSelect.value) ? targetSelect.value : (translatorSettings.targetLang || 'pt-br');
 
+    // If Microsoft provider is selected but no Azure key, fallback to MyMemory to avoid API errors
+    let activeTranslator = translator;
+    if (translator && translator.provider === 'microsoft' && !translator.azureKey) {
+        const statusEl = document.getElementById('statusMsg');
+        statusEl.textContent = 'Azure não configurado — usando fallback MyMemory.';
+        setTimeout(() => { statusEl.textContent = ''; }, 2500);
+        activeTranslator = new TranslatorService('mymemory');
+    }
+
     if (sourceLang === 'auto') {
         translatedTextArea.textContent = 'Detectando idioma...';
-        const detected = await translator.detect(text);
+        let detected = '';
+        try {
+            detected = await (activeTranslator.detect ? activeTranslator.detect(text) : translator.detect(text));
+        } catch (errDetect) {
+            console.warn('Detect failed:', errDetect);
+            detected = await translator.detect(text);
+        }
         lastDetectedLang = detected || 'en';
         sourceLang = lastDetectedLang;
         // If user hasn't overridden source select, reflect detected
@@ -1181,7 +1196,7 @@ async function translateSelectedText(text) {
 
     translatedTextArea.textContent = 'Traduzindo...';
     try {
-        const result = await translator.translate(text, sourceLang, targetLang);
+        const result = await activeTranslator.translate(text, sourceLang, targetLang);
         translatedTextArea.textContent = result;
     } catch (err) {
         console.error('Erro na tradução:', err);
@@ -1191,7 +1206,6 @@ async function translateSelectedText(text) {
 
 function initLanguageControls() {
     const langs = [
-        { code: 'auto', label: 'Detectar auto' },
         { code: 'en', label: 'English' },
         { code: 'pt-br', label: 'Português (BR)' },
         { code: 'es', label: 'Español' },
@@ -1206,12 +1220,15 @@ function initLanguageControls() {
 
     if (!sourceSelect || !targetSelect) return; // nothing to do
 
-    // populate
+    // populate: source gets 'auto' + langs, target gets only langs (no 'auto')
     sourceSelect.innerHTML = '';
     targetSelect.innerHTML = '';
+    const sourceLangs = [{ code: 'auto', label: 'Detectar auto' }, ...langs];
+    sourceLangs.forEach(l => {
+        const o = document.createElement('option'); o.value = l.code; o.textContent = l.label; sourceSelect.appendChild(o);
+    });
     langs.forEach(l => {
-        const o1 = document.createElement('option'); o1.value = l.code; o1.textContent = l.label; sourceSelect.appendChild(o1);
-        const o2 = document.createElement('option'); o2.value = l.code; o2.textContent = l.label; targetSelect.appendChild(o2);
+        const o = document.createElement('option'); o.value = l.code; o.textContent = l.label; targetSelect.appendChild(o);
     });
 
     // set defaults
@@ -1223,8 +1240,18 @@ function initLanguageControls() {
         targetSelect.value = 'pt-br';
     }
 
+    // helper to enable/disable swap when source is 'auto'
+    const updateSwapDisabled = () => {
+        if (swapBtn) {
+            swapBtn.disabled = (sourceSelect.value === 'auto');
+            swapBtn.title = swapBtn.disabled ? 'Impossível inverter quando Origem está em "Detectar auto".' : 'Inverter idiomas';
+        }
+    };
+    updateSwapDisabled();
+
     // events
     sourceSelect.addEventListener('change', () => {
+        updateSwapDisabled();
         // if user switches away from auto, retranslate selection
         if (lastSelectionText && sourceSelect.value !== 'auto') translateSelectedText(lastSelectionText);
     });
@@ -1236,17 +1263,20 @@ function initLanguageControls() {
         if (lastSelectionText) translateSelectedText(lastSelectionText);
     });
 
-    swapBtn.addEventListener('click', () => {
-        const s = sourceSelect.value;
-        const t = targetSelect.value;
-        // if source is auto and we have a detected language, use that
-        const detected = (s === 'auto') ? (lastDetectedLang || 'en') : s;
-        // swap
-        sourceSelect.value = t || 'auto';
-        targetSelect.value = detected || 'pt-br';
-        saveTranslatorSettings({ targetLang: targetSelect.value });
-        if (lastSelectionText) translateSelectedText(lastSelectionText);
-    });
+    if (swapBtn) {
+        swapBtn.addEventListener('click', () => {
+            if (swapBtn.disabled) return;
+            const s = sourceSelect.value;
+            const t = targetSelect.value;
+            // if source is auto and we have a detected language, use that
+            const detected = (s === 'auto') ? (lastDetectedLang || 'en') : s;
+            // swap
+            sourceSelect.value = t || 'auto';
+            targetSelect.value = detected || 'pt-br';
+            saveTranslatorSettings({ targetLang: targetSelect.value });
+            if (lastSelectionText) translateSelectedText(lastSelectionText);
+        });
+    }
 }
 
 // Inicialização: carrega settings do storage e abre o PDF
