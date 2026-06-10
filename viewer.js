@@ -316,9 +316,18 @@ function renderPage(num) {
 
 function saveProgress(page) {
     const statusEl = document.getElementById('statusMsg');
+    if (!statusEl) return;
+    // Ensure status is visible and doesn't trigger layout shifts
+    statusEl.style.opacity = '1';
     statusEl.textContent = "Saving current page...";
     chrome.storage.local.set({ [BOOK_ID]: page }, () => {
         statusEl.textContent = "Progress saved!";
+        // Keep message briefly then fade out to avoid leaving text that could
+        // cause future small layout recalculations in some browsers.
+        setTimeout(() => {
+            statusEl.style.opacity = '0';
+            setTimeout(() => { statusEl.textContent = ''; }, 260);
+        }, 700);
     });
 }
 
@@ -342,7 +351,9 @@ document.getElementById('pageNumber').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
         e.target.blur(); // Triggers change event
     }
+    try { refreshToolbarHeight(); } catch (e) { /* ignore */ }
 });
+ 
 
 function handlePageInput(e) {
     let num = parseInt(e.target.value);
@@ -434,6 +445,7 @@ if (translatorToggleBtn) {
         } else {
             sidebar.classList.remove('open');
         }
+        setTimeout(() => { try { refreshToolbarHeight(); } catch (e) {} }, 40);
     });
 }
 
@@ -448,18 +460,77 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Re-render on resize (debounced) to keep canvas and overlays aligned
+// Re-render on resize (debounced) to keep canvas and overlays aligned.
+// Avoid full re-render on minor resizes to prevent flicker; only re-render
+// when pdfArea width or devicePixelRatio changes significantly.
+
 let _resizeTimeout = null;
+let _lastPdfAreaWidth = (document.getElementById('pdfArea') && document.getElementById('pdfArea').clientWidth) || window.innerWidth;
+let _lastDevicePixelRatio = window.devicePixelRatio || 1;
+
+function updateStatusPosition() {
+    try {
+        const statusEl = document.getElementById('statusMsg');
+        const toolbar = document.querySelector('.toolbar');
+        const toolbarRight = document.querySelector('.toolbar-right');
+        if (!statusEl || !toolbar || !toolbarRight) return;
+
+        // Measure width of right-side buttons so status can be positioned without
+        // affecting flex layout. This keeps the status out of document flow
+        // and prevents content shifts when its text changes.
+        let buttonsWidth = 0;
+        toolbarRight.querySelectorAll('button').forEach(btn => {
+            const style = getComputedStyle(btn);
+            const mr = parseFloat(style.marginRight) || 0;
+            buttonsWidth += btn.offsetWidth + mr;
+        });
+
+        const rightOffset = Math.round(buttonsWidth + 12); // spacing buffer
+        statusEl.style.position = 'absolute';
+        statusEl.style.top = '50%';
+        statusEl.style.transform = 'translateY(-50%)';
+        statusEl.style.pointerEvents = 'none';
+        statusEl.style.right = rightOffset + 'px';
+    } catch (err) {
+        // ignore
+    }
+}
+
+function refreshToolbarHeight() {
+    try {
+        const toolbar = document.querySelector('.toolbar');
+        if (!toolbar) return;
+        const h = toolbar.offsetHeight || 50;
+        document.documentElement.style.setProperty('--toolbar-height', h + 'px');
+        // reposition status after toolbar height update
+        updateStatusPosition();
+    } catch (e) {
+        // ignore
+    }
+}
+
 window.addEventListener('resize', () => {
     if (_resizeTimeout) clearTimeout(_resizeTimeout);
     _resizeTimeout = setTimeout(() => {
         try {
-            if (pdfDoc && !pageRendering) {
-                // Force a re-render to recalc canvas sizes and overlay layers
-                renderPage(currentPage);
+            const pdfArea = document.getElementById('pdfArea');
+            const newWidth = pdfArea ? pdfArea.clientWidth : window.innerWidth;
+            const dpr = window.devicePixelRatio || 1;
+            const widthChanged = Math.abs(newWidth - _lastPdfAreaWidth) > 40; // threshold in px
+            const dprChanged = dpr !== _lastDevicePixelRatio;
+
+            // Reposition the status indicator and update toolbar height on all resizes (no layout effect).
+            refreshToolbarHeight();
+
+            if (widthChanged || dprChanged) {
+                _lastPdfAreaWidth = newWidth;
+                _lastDevicePixelRatio = dpr;
+                if (pdfDoc && !pageRendering) {
+                    renderPage(currentPage);
+                }
             }
         } catch (e) { /* ignore if not initialized yet */ }
-    }, 160);
+    }, 220);
 });
 
 // ==========================================
@@ -802,6 +873,7 @@ addTextBtn.addEventListener('click', () => {
         document.getElementById('pageWrapper').style.cursor = 'default';
         document.getElementById('pageWrapper').classList.remove('disable-selection');
     }
+    setTimeout(() => { try { refreshToolbarHeight(); } catch (e) {} }, 60);
 });
 
 drawBtn.addEventListener('click', (e) => {
@@ -821,6 +893,7 @@ drawBtn.addEventListener('click', (e) => {
     } else {
         // Intercala o menu open/close
         drawMenu.classList.toggle('open');
+        setTimeout(() => { try { refreshToolbarHeight(); } catch (e) {} }, 40);
     }
 });
 
@@ -828,10 +901,12 @@ drawBtn.addEventListener('click', (e) => {
 document.addEventListener('click', (e) => {
     if (!drawBtn.contains(e.target) && !drawMenu.contains(e.target)) {
         drawMenu.classList.remove('open');
+        setTimeout(() => { try { refreshToolbarHeight(); } catch (e) {} }, 40);
     }
     if (!addTextBtn.contains(e.target) && !textMenu.contains(e.target)) {
         if (isTextMode && e.target.closest('#pageWrapper') === null) {
              textMenu.classList.remove('open');
+             setTimeout(() => { try { refreshToolbarHeight(); } catch (e) {} }, 40);
         }
     }
 });
@@ -1136,10 +1211,12 @@ function openSettingsModal() {
     blocklistInput.value = folderConfig.blocklist.join(', ');
     updateProviderUI();
     settingsModal.classList.add('open');
+    setTimeout(() => { try { refreshToolbarHeight(); } catch (e) {} }, 40);
 }
 
 function closeSettingsModalFn() {
     settingsModal.classList.remove('open');
+    setTimeout(() => { try { refreshToolbarHeight(); } catch (e) {} }, 40);
 }
 
 function updateProviderUI() {

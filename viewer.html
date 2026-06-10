@@ -29,8 +29,15 @@
         .toolbar {
             height: 50px; background-color: #1e1e1e;
             display: flex; align-items: center; justify-content: space-between; gap: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 10; flex-shrink: 0;
-            padding: 0 14px; position: relative;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 1000; flex-shrink: 0;
+            padding: 0 14px; position: fixed; top: 0; left: 0; right: 0;
+            backdrop-filter: blur(4px);
+        }
+        /* Promote toolbar and PDF area to their own compositing layers to reduce repaint flicker */
+        .toolbar, .pdf-area, .page-wrapper, canvas, .textLayer {
+            will-change: transform, opacity;
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
         }
         .book-title { 
             font-size: 14px; min-width: 0;
@@ -40,9 +47,10 @@
             display: flex; align-items: center; gap: 12px; justify-content: center; min-width: 0;
         }
         .toolbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 0 0 auto; }
-        .toolbar-right { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 0 auto; }
+        /* Reserve a fixed width for the right area to avoid reflows when its content changes */
+        .toolbar-right { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 0 auto; width: 220px; justify-content: flex-end; }
         .controls-center { display: flex; align-items: center; gap: 12px; justify-content: center; min-width: 0; flex: 1 1 auto; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-gutter: stable; }
-        .status-msg { display: inline-block; width: 160px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; text-align: right; }
+        .status-msg { display: inline-block; width: 160px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; text-align: right; opacity: 1; transition: opacity 250ms ease; }
         .controls-center::-webkit-scrollbar{height:6px}
         .controls-center::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:4px}
         .page-info { font-size: 18px; font-weight: bold; color: #00ca4e; }
@@ -56,7 +64,7 @@
         button:hover { background-color: #c9e8ff; }
         button:disabled { background-color: #555; cursor: not-allowed; }
 
-        .main-layout { display: flex; flex: 1; overflow: hidden; width: 100%; }
+        .main-layout { display: flex; flex: 1; overflow: hidden; width: 100%; padding-top: var(--toolbar-height, 50px); }
 
         .pdf-area {
             flex: 1; overflow: auto; padding: 20px;
@@ -80,7 +88,7 @@
         .color-btn-none::after { content: ''; position: absolute; top: 10px; left: 2px; right: 2px; height: 2px; background: #fff; transform: rotate(45deg); }
 
         .draw-menu {
-            position: absolute; top: 50px; left: 15px; background: #333; border: 1px solid #444;
+            position: absolute; top: calc(var(--toolbar-height, 50px) + 0px); left: 15px; background: #333; border: 1px solid #444;
             border-radius: 6px; padding: 15px; display: none; flex-direction: column; z-index: 100;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5); width: 240px;
         }
@@ -255,6 +263,7 @@
             .toolbar-left { order: 1; }
             .controls-center { order: 2; width: 100%; justify-content: center; margin-top: 6px; }
             .toolbar-right { order: 3; }
+            .toolbar-right { width: auto; justify-content: center; }
             .book-title { width: 100%; text-align: center; max-width: none; margin: 6px 0; }
             .page-info { display: none; }
             .page-input { width: 48px; }
@@ -282,7 +291,7 @@
             canvas { max-width: 100%; height: auto; }
 
             .draw-menu, .draw-menu.open, #textMenu {
-                position: fixed; left: 8px; top: 58px; z-index: 200; width: 260px;
+                position: fixed; left: 8px; top: calc(var(--toolbar-height, 50px) + 8px); z-index: 200; width: 260px;
             }
 
             /* Make toolbar buttons more compact on narrow screens */
