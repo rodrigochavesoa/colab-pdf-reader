@@ -356,6 +356,11 @@ function zoomOut() {
 
 document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
 document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
+// Undo/Redo UI buttons
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+if (undoBtn) undoBtn.addEventListener('click', () => { undo(); });
+if (redoBtn) redoBtn.addEventListener('click', () => { redo(); });
 
 // ==========================================
 // 7. ANOTAÇÕES E HIGHLIGHTS
@@ -403,6 +408,7 @@ function loadAnnotations() {
         redoStack = [];
         undoStack.push(cloneAnnotations(annotations));
 
+        updateUndoRedoUI();
         renderAnnotations(currentPage);
     });
 }
@@ -414,12 +420,23 @@ function saveAnnotations() {
 }
 
 // Usa quando uma ação muda as anotações: push no undo stack
+function updateUndoRedoUI() {
+    try {
+        if (typeof undoBtn !== 'undefined' && undoBtn) undoBtn.disabled = (undoStack.length <= 1 || isPerformingUndoRedo);
+        if (typeof redoBtn !== 'undefined' && redoBtn) redoBtn.disabled = (redoStack.length === 0 || isPerformingUndoRedo);
+    } catch (e) {
+        // ignore if buttons not available yet
+    }
+}
+
+// Usa quando uma ação muda as anotações: push no undo stack
 function recordChange() {
     if (isPerformingUndoRedo) return;
     // Limpa redo ao fazer nova ação
     redoStack = [];
     undoStack.push(cloneAnnotations(annotations));
     if (undoStack.length > MAX_HISTORY) undoStack.shift();
+    updateUndoRedoUI();
 }
 
 function undo() {
@@ -432,6 +449,7 @@ function undo() {
     saveAnnotations();
     renderAnnotations(currentPage);
     isPerformingUndoRedo = false;
+    updateUndoRedoUI();
 }
 
 function redo() {
@@ -443,6 +461,7 @@ function redo() {
     saveAnnotations();
     renderAnnotations(currentPage);
     isPerformingUndoRedo = false;
+    updateUndoRedoUI();
 }
 
 // Renderizar anotações da página atual
@@ -727,6 +746,7 @@ document.addEventListener('keydown', (e) => {
 document.getElementById('clearDrawingsBtn').addEventListener('click', () => {
     if (annotations.drawings[currentPage]) {
         annotations.drawings[currentPage] = [];
+        recordChange();
         saveAnnotations();
         renderAnnotations(currentPage);
     }
