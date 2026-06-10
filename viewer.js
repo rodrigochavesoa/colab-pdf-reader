@@ -677,6 +677,17 @@ drawCanvas.addEventListener('mousedown', (e) => {
     const x = (e.clientX - rect.left) / currentScale;
     const y = (e.clientY - rect.top) / currentScale;
     currentPath = [[x, y]];
+    
+    // Inicia um novo subpath no contexto de desenho para evitar que o
+    // próximo `lineTo` conecte ao último traço salvo no canvas.
+    if (drawCtx) {
+        drawCtx.beginPath();
+        drawCtx.strokeStyle = currentDrawColor;
+        drawCtx.lineWidth = currentThickness * currentScale;
+        drawCtx.lineCap = 'round';
+        drawCtx.lineJoin = 'round';
+        drawCtx.moveTo(x * currentScale, y * currentScale);
+    }
 });
 
 drawCanvas.addEventListener('mousemove', (e) => {
