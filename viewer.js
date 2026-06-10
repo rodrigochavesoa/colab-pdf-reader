@@ -397,6 +397,39 @@ closeSidebarBtn.addEventListener('click', () => {
     sidebar.classList.remove('open');
 });
 
+const translatorToggleBtn = document.getElementById('translatorToggleBtn');
+if (translatorToggleBtn) {
+    translatorToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sidebar.classList.toggle('open');
+    });
+}
+
+// Close sidebar on outside click for small screens
+document.addEventListener('click', (e) => {
+    const toggleBtn = document.getElementById('translatorToggleBtn');
+    if (window.innerWidth <= 900 && sidebar.classList.contains('open')) {
+        if (toggleBtn && toggleBtn.contains(e.target)) return;
+        if (!sidebar.contains(e.target)) {
+            sidebar.classList.remove('open');
+        }
+    }
+});
+
+// Re-render on resize (debounced) to keep canvas and overlays aligned
+let _resizeTimeout = null;
+window.addEventListener('resize', () => {
+    if (_resizeTimeout) clearTimeout(_resizeTimeout);
+    _resizeTimeout = setTimeout(() => {
+        try {
+            if (pdfDoc && !pageRendering) {
+                // Force a re-render to recalc canvas sizes and overlay layers
+                renderPage(currentPage);
+            }
+        } catch (e) { /* ignore if not initialized yet */ }
+    }, 160);
+});
+
 // ==========================================
 // 5. CONTROLES DE ZOOM
 // ==========================================
@@ -1158,7 +1191,7 @@ async function translateSelectedText(text) {
 
 function initLanguageControls() {
     const langs = [
-        { code: 'auto', label: 'Detectar automaticamente' },
+        { code: 'auto', label: 'Detectar auto' },
         { code: 'en', label: 'English' },
         { code: 'pt-br', label: 'Português (BR)' },
         { code: 'es', label: 'Español' },
