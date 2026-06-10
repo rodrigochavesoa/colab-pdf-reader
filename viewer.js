@@ -294,6 +294,19 @@ window.addEventListener('keydown', (e) => {
             e.preventDefault();
             zoomOut();
         }
+        // Undo / Redo (Ctrl+Z / Ctrl+Y). Ctrl+Shift+Z também refaz.
+        const k = e.key ? e.key.toLowerCase() : '';
+        if (k === 'z') {
+            e.preventDefault();
+            if (e.shiftKey) {
+                redo();
+            } else {
+                undo();
+            }
+        } else if (k === 'y') {
+            e.preventDefault();
+            redo();
+        }
     }
 });
 
@@ -352,6 +365,12 @@ let annotations = {
     drawings: {},   // pageNumber -> [ { color, thickness, paths: [[x,y], ...] } ]
     texts: {}       // pageNumber -> [ { text, color, x, y, fontSize } ]
 };
+function cloneAnnotations(obj) {
+    try {
+        if (typeof structuredClone === 'function') return structuredClone(obj);
+    } catch (e) {}
+    return JSON.parse(JSON.stringify(obj));
+}
 
 let isDrawMode = false;
 let isTextMode = false;
@@ -362,6 +381,12 @@ let currentThickness = 4;
 
 const drawBtn = document.getElementById('drawBtn');
 const drawMenu = document.getElementById('drawMenu');
+// Undo/Redo history stacks
+let undoStack = [];
+let redoStack = [];
+const MAX_HISTORY = 50;
+let isPerformingUndoRedo = false;
+let previousAnnotationsSnapshot = null;
 
 // Carregar anotações
 function loadAnnotations() {
@@ -373,6 +398,11 @@ function loadAnnotations() {
             drawings: saved.drawings || {},
             texts: saved.texts || {}
         };
+        // Inicializa histórico de undo/redo com o estado inicial
+        undoStack = [];
+        redoStack = [];
+        undoStack.push(cloneAnnotations(annotations));
+
         renderAnnotations(currentPage);
     });
 }
@@ -381,6 +411,38 @@ function loadAnnotations() {
 function saveAnnotations() {
     if (!BOOK_ID) return;
     chrome.storage.local.set({ [`ann_${BOOK_ID}`]: annotations });
+}
+
+// Usa quando uma ação muda as anotações: push no undo stack
+function recordChange() {
+    if (isPerformingUndoRedo) return;
+    // Limpa redo ao fazer nova ação
+    redoStack = [];
+    undoStack.push(cloneAnnotations(annotations));
+    if (undoStack.length > MAX_HISTORY) undoStack.shift();
+}
+
+function undo() {
+    if (undoStack.length <= 1) return; // nada a desfazer além do estado inicial
+    isPerformingUndoRedo = true;
+    const current = undoStack.pop();
+    redoStack.push(cloneAnnotations(current));
+    const prev = cloneAnnotations(undoStack[undoStack.length - 1]);
+    annotations = prev;
+    saveAnnotations();
+    renderAnnotations(currentPage);
+    isPerformingUndoRedo = false;
+}
+
+function redo() {
+    if (redoStack.length === 0) return;
+    isPerformingUndoRedo = true;
+    const next = redoStack.pop();
+    undoStack.push(cloneAnnotations(next));
+    annotations = cloneAnnotations(next);
+    saveAnnotations();
+    renderAnnotations(currentPage);
+    isPerformingUndoRedo = false;
 }
 
 // Renderizar anotações da página atual
@@ -485,6 +547,7 @@ function renderAnnotations(pageNum) {
                 
                 annotations.texts[pageNum][index].x = newX;
                 annotations.texts[pageNum][index].y = newY;
+                recordChange();
                 saveAnnotations();
             };
             
@@ -506,6 +569,7 @@ function renderAnnotations(pageNum) {
             div.onblur = null; 
             
             annotations.texts[pageNum].splice(index, 1);
+            recordChange();
             saveAnnotations();
             renderAnnotations(pageNum);
         });
@@ -534,11 +598,13 @@ function renderAnnotations(pageNum) {
 
                 if (newText.length > 0) {
                     annotations.texts[pageNum][index].text = newText;
-                    saveAnnotations();
+                        recordChange();
+                        saveAnnotations();
                 } else {
                     // Texto ficou vazio, exclui a anotação
                     annotations.texts[pageNum].splice(index, 1);
-                    saveAnnotations();
+                        recordChange();
+                        saveAnnotations();
                     renderAnnotations(pageNum);
                 }
             };
@@ -718,6 +784,7 @@ drawCanvas.addEventListener('mouseup', () => {
             thickness: currentThickness,
             paths: currentPath
         });
+        recordChange();
         saveAnnotations();
     }
     renderAnnotations(currentPage); // limpa o caminho e renderiza tudo limpo
@@ -774,6 +841,7 @@ document.getElementById('pageWrapper').addEventListener('click', (e) => {
                 x: startX,
                 y: startY
             });
+            recordChange();
             saveAnnotations();
         }
         
@@ -844,15 +912,20 @@ document.getElementById('hlColors').addEventListener('click', (e) => {
                 text: lastSelectionText,
                 rects: lastSelectionRects
             });
+            recordChange();
             saveAnnotations();
             renderAnnotations(currentPage);
         } else {
              if (annotations.highlights[currentPage]) {
                 // Remove destaques se a seleção de texto atual contiver ou estiver contida no texto destacado
+                const before = annotations.highlights[currentPage].length;
                 annotations.highlights[currentPage] = annotations.highlights[currentPage].filter(hl => 
                     !(lastSelectionText.includes(hl.text) || hl.text.includes(lastSelectionText))
                 );
-                saveAnnotations();
+                if (annotations.highlights[currentPage].length !== before) {
+                    recordChange();
+                    saveAnnotations();
+                }
                 renderAnnotations(currentPage);
             }
         }
