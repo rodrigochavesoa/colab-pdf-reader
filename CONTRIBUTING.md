@@ -313,7 +313,7 @@ class TranslatorService {
   }
   
   async translateText(text) {
-    // implementação
+    // implementation
   }
 }
 
@@ -328,8 +328,8 @@ const MAX_CHARS_PER_REQUEST = 50000;
 
 ```javascript
 // ✅ Bom
-// Microsoft Azure Translator tem limite de 50k caracteres por requisição
-// Para textos maiores, precisamos quebrar em chunks
+// Microsoft Azure Translator has a 50k characters per-request limit
+// For larger texts, split the input into chunks
 const chunks = text.match(/.{1,50000}/g) || [text];
 
 // ❌ Ruim

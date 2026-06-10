@@ -234,21 +234,21 @@ class TranslatorService {
 ```javascript
 // background.js
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.url?.endsWith('.pdf')) {
-        // Redireciona para viewer customizado
-    }
+  if (changeInfo.url?.endsWith('.pdf')) {
+    // Redirect to the custom viewer
+  }
 });
 ```
 
 #### 3. Local Storage Pattern (Persistência)
 
 ```javascript
-// Salva página após renderização
+// Save current page after rendering
 chrome.storage.local.set({ [BOOK_ID]: currentPage });
 
-// Recupera página na próxima abertura
+// Restore saved page on next open
 chrome.storage.local.get([BOOK_ID], (res) => {
-    currentPage = res[BOOK_ID] || 1;
+  currentPage = res[BOOK_ID] || 1;
 });
 ```
 

@@ -1,17 +1,17 @@
-// Configuração de pastas permitidas/bloqueadas (carregada do storage)
+// Allowed and blocked folders configuration (loaded from chrome.storage.local)
 let folderConfig = {
-  allowlist: [],  // Se vazio, permite todas (exceto blocklist)
-  blocklist: []   // Pastas sempre bloqueadas
+  allowlist: [],  // If empty, allow all paths (except those in blocklist)
+  blocklist: []   // Folders that are always blocked
 };
 
-// Carrega configuração do storage ao iniciar
+// Load folder configuration from storage on startup
 chrome.storage.local.get(['folderConfig'], (result) => {
   if (result.folderConfig) {
     folderConfig = result.folderConfig;
   }
 });
 
-// Escuta mudanças na configuração
+// Listen for configuration changes
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.folderConfig) {
     folderConfig = changes.folderConfig.newValue;
@@ -23,24 +23,24 @@ function isPathAllowed(fileUrl) {
     const url = new URL(fileUrl);
     const pathname = decodeURIComponent(url.pathname);
     
-    // Verifica blocklist primeiro (prioridade máxima)
+    // Check blocklist first (highest priority)
     for (const blocked of folderConfig.blocklist) {
       if (pathname.toLowerCase().includes(blocked.toLowerCase())) {
         return false;
       }
     }
     
-    // Se allowlist não estiver vazia, verifica se está na lista
+    // If allowlist is not empty, ensure the path appears in the allowlist
     if (folderConfig.allowlist.length > 0) {
       for (const allowed of folderConfig.allowlist) {
         if (pathname.toLowerCase().includes(allowed.toLowerCase())) {
           return true;
         }
       }
-      return false; // Não está na allowlist
+      return false; // Not in allowlist
     }
     
-    // Allowlist vazia = permite tudo (exceto blocklist)
+    // Empty allowlist: allow all paths (except those in blocklist)
     return true;
   } catch (e) {
     console.warn('Erro ao validar caminho:', e);
@@ -49,18 +49,18 @@ function isPathAllowed(fileUrl) {
 }
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  // Verifica se a URL mudou e se é um arquivo PDF local
+  // Detect URL changes and process only local PDF files
   if (changeInfo.url && changeInfo.url.startsWith("file://") && changeInfo.url.toLowerCase().endsWith(".pdf")) {
     
-    // Verifica se o caminho está permitido
+    // Check whether the file path is allowed
     if (!isPathAllowed(changeInfo.url)) {
-      console.log('PDF bloqueado pela configuração de pastas:', changeInfo.url);
+      console.log('PDF blocked by folder configuration:', changeInfo.url);
       return;
     }
     
     const extensionViewerUrl = chrome.runtime.getURL("viewer.html");
     
-    // Evita loop infinito: só redireciona se a aba já não estiver no nosso viewer
+    // Prevent redirect loop: only redirect when the tab is not already using our viewer
     if (!changeInfo.url.startsWith(extensionViewerUrl)) {
       const customViewerUrl = `${extensionViewerUrl}?file=${encodeURIComponent(changeInfo.url)}`;
       

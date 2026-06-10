@@ -1,7 +1,7 @@
 // ==========================================
-// 1. CONFIGURAÇÃO INICIAL E WORKER
+// 1. INITIAL SETUP AND WORKER
 // ==========================================
-// PDF.js version: 4.x (atualizar conforme pdf.min.js/pdf.worker.min.js)
+// PDF.js version: 4.x (update together with pdf.min.js/pdf.worker.min.js)
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.js';
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -9,7 +9,7 @@ const BOOK_ID = urlParams.get('file');
 
 let pdfDoc = null;
 let currentPage = 1;
-let currentScale = 1.5; // Escala inicial padrão (150%)
+let currentScale = 1.5; // Default initial scale (150%)
 let pageRendering = false;
 
 const canvas = document.getElementById('pdfCanvas');
@@ -17,33 +17,33 @@ const ctx = canvas.getContext('2d');
 const wrapper = document.getElementById('pageWrapper');
 const textLayerEl = document.getElementById('textLayer');
 
-// Elementos das novas camadas de anotação
+// Elements for additional annotation layers
 const drawCanvas = document.getElementById('drawCanvas');
 const drawCtx = drawCanvas ? drawCanvas.getContext('2d') : null;
 const highlightsLayer = document.getElementById('highlightsLayer');
 const textAnnotationsLayer = document.getElementById('textAnnotationsLayer');
 
 // ==========================================
-// 2. GERENCIAMENTO DE CONFIGURAÇÕES (Storage + Fallback config.js)
+// 2. SETTINGS MANAGEMENT (storage + fallback to config.js)
 // ==========================================
 const DEFAULT_SETTINGS = {
-    provider: 'mymemory',           // Default: gratuito, sem cadastro
+    provider: 'mymemory',           // Default: free provider (no API key required)
     azureKey: '',
     azureRegion: 'brazilsouth',
-    targetLang: 'pt-br'             // idioma alvo padrão para tradução
+    targetLang: 'pt-br'             // Default target language for translations
 };
 
 let translatorSettings = { ...DEFAULT_SETTINGS };
 let folderConfig = { allowlist: [], blocklist: [] };
 let translator = null;
-// Marca se o usuário alterou explicitamente o idioma de destino nesta sessão
+// Flag indicating whether the user explicitly changed the target language in this session
 let userChangedTarget = false;
 
-// Carrega configurações: storage > config.js > defaults
+// Load settings: storage -> config.js -> defaults
 async function loadAllSettings() {
     return new Promise((resolve) => {
         chrome.storage.local.get(['translatorSettings', 'folderConfig'], (result) => {
-            // 1. Tradução
+            // 1. Translation settings
             if (result.translatorSettings) {
                 translatorSettings = { ...DEFAULT_SETTINGS, ...result.translatorSettings };
             } else if (typeof CONFIG !== 'undefined' && CONFIG.AZURE_TRANSLATOR_KEY && CONFIG.AZURE_TRANSLATOR_KEY !== 'COLE_A_SUA_CHAVE_AQUI') {
@@ -54,7 +54,7 @@ async function loadAllSettings() {
                 };
             }
             
-            // 2. Segurança (Pastas)
+            // 2. Folder security settings
             if (result.folderConfig) {
                 folderConfig = result.folderConfig;
             }
@@ -77,7 +77,7 @@ function saveFolderSettings(newBlocklist) {
 
 function initTranslator() {
     translator = new TranslatorService(translatorSettings.provider);
-    // Injeta credenciais Azure se necessário
+    // Inject Azure credentials when using Microsoft provider
     if (translatorSettings.provider === 'microsoft') {
         translator.azureKey = translatorSettings.azureKey;
         translator.azureRegion = translatorSettings.azureRegion;
@@ -85,7 +85,7 @@ function initTranslator() {
     console.log('[Translator] Provider:', translatorSettings.provider);
 }
 
-// Força o seletor de origem para 'auto' repetidamente (workaround para restauração do navegador)
+// Force the source-language selector to 'auto' repeatedly (workaround for browser/extension UI state restore)
 function enforceAutoSource(retries = 6, interval = 150) {
     try {
         const sourceSelect = document.getElementById('sourceLangSelect');
@@ -105,12 +105,12 @@ function enforceAutoSource(retries = 6, interval = 150) {
             setTimeout(() => enforceAutoSource(retries - 1, interval), interval);
         }
     } catch (e) {
-        // silencioso
+        // silent
     }
 }
 
 // ==========================================
-// 3. ARQUITETURA DESACOPLADA DE TRADUÇÃO
+// 3. TRANSLATION SERVICE ABSTRACTION
 // ==========================================
 class TranslatorService {
     constructor(provider = 'mymemory') {
@@ -129,33 +129,33 @@ class TranslatorService {
                 case 'microsoft':
                     return await this.useMicrosoftAPI(text, sourceLang, targetLang);
                 default:
-                    throw new Error('Provedor de tradução não suportado.');
+                    throw new Error('Translation provider not supported.');
             }
         } catch (error) {
-            console.error("Erro no serviço de tradução:", error);
-            return "❌ Erro ao conectar com a API de tradução.";
+            console.error("Translation service error:", error);
+            return "❌ Error connecting to translation API.";
         }
     }
 
-    // Provedor Gratuito (MyMemory) - Sem chave necessária
+    // Free provider (MyMemory) - no API key required
     async useMyMemoryAPI(text, sourceLang, targetLang) {
         const langPair = `${sourceLang}|${targetLang === 'pt-br' ? 'pt' : targetLang}`;
         const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langPair}`;
 
         const response = await fetch(url);
-        if (!response.ok) throw new Error('Erro na API MyMemory');
+        if (!response.ok) throw new Error('MyMemory API error');
 
         const data = await response.json();
         if (data.responseData?.translatedText) {
             return data.responseData.translatedText;
         }
-        throw new Error('Resposta inválida da MyMemory');
+        throw new Error('Invalid response from MyMemory');
     }
 
-    // Microsoft Azure Translator - Requer chave
+    // Microsoft Azure Translator - requires API key
     async useMicrosoftAPI(text, sourceLang, targetLang) {
         if (!this.azureKey) {
-            throw new Error('Chave do Azure não configurada. Abra as configurações (⚙️).');
+            throw new Error('Azure key not configured. Open settings (⚙️).');
         }
 
         const target = targetLang === 'pt-br' ? 'pt' : targetLang;
@@ -174,15 +174,15 @@ class TranslatorService {
         });
 
         if (!response.ok) {
-            console.error(`Erro na API Microsoft: ${response.status}`);
-            throw new Error("Erro ao comunicar com o serviço de tradução");
+            console.error(`Microsoft API error: ${response.status}`);
+            throw new Error("Error communicating with translation service");
         }
 
         const data = await response.json();
         if (data && data[0] && data[0].translations && data[0].translations[0]) {
             return data[0].translations[0].text;
         }
-        throw new Error("Resposta inválida do serviço de tradução");
+        throw new Error("Invalid response from translation service");
     }
 
     // Detect language (Azure when available, otherwise fallback heuristic)
@@ -241,7 +241,7 @@ class TranslatorService {
         });
 
         if (bestScore === 0) {
-            // quick script checks as last resort
+            // quick script checks as a last resort
             if (/[¿¡áéíóúñü]/.test(textLower)) return 'es';
             if (/[ãõáâêç]/.test(textLower)) return 'pt-br';
             return 'en';
@@ -252,13 +252,13 @@ class TranslatorService {
 }
 
 // ==========================================
-// 3. RENDERIZAÇÃO DO PDF E PERSISTÊNCIA
+// 3. PDF RENDERING AND PERSISTENCE
 // ==========================================
 function renderPage(num) {
     pageRendering = true;
     document.getElementById('pageNumber').value = num;
 
-    // Limpa as anotações antigas imediatamente da tela (evita o "ghosting")
+    // Clear previous annotations immediately from the screen (prevents "ghosting")
     if (typeof drawCtx !== 'undefined') drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
     if (typeof highlightsLayer !== 'undefined') highlightsLayer.innerHTML = '';
     if (typeof textAnnotationsLayer !== 'undefined') textAnnotationsLayer.innerHTML = '';
@@ -295,7 +295,7 @@ function renderPage(num) {
             pageRendering = false;
             saveProgress(num);
 
-            // Redimensiona sobreposições pelas medidas obtidas
+            // Resize overlay layers according to the computed viewport
             if (typeof drawCanvas !== 'undefined') {
                 drawCanvas.width = canvas.width;
                 drawCanvas.height = canvas.height;
@@ -304,11 +304,11 @@ function renderPage(num) {
                 textAnnotationsLayer.style.width = canvas.width + 'px';
                 textAnnotationsLayer.style.height = canvas.height + 'px';
                 
-                // Restaura as anotações da página logo que ela existir
+                // Restore page annotations as soon as the layers are sized
                 renderAnnotations(num);
             }
         }).catch(err => {
-            console.error("Erro na renderização:", err);
+            console.error("Render error:", err);
             pageRendering = false;
         });
     });
@@ -316,14 +316,14 @@ function renderPage(num) {
 
 function saveProgress(page) {
     const statusEl = document.getElementById('statusMsg');
-    statusEl.textContent = "Guardando página...";
+    statusEl.textContent = "Saving current page...";
     chrome.storage.local.set({ [BOOK_ID]: page }, () => {
-        statusEl.textContent = "Progresso salvo!";
+        statusEl.textContent = "Progress saved!";
     });
 }
 
 // ==========================================
-// 4. EVENTOS DOS BOTÕES E DA SIDEBAR
+// 4. BUTTONS AND SIDEBAR EVENTS
 // ==========================================
 document.getElementById('prevBtn').addEventListener('click', () => {
     if (currentPage <= 1 || pageRendering) return;
@@ -361,12 +361,12 @@ function handlePageInput(e) {
     }
 }
 
-// Atalhos de Teclado (Navegação por Setas e Zoom)
+// Keyboard shortcuts (arrow navigation and zoom)
 window.addEventListener('keydown', (e) => {
-    // Evita disparar atalhos se o usuário estiver digitando em campos de texto, mudando opções ou editando anotações
+    // Prevent shortcuts while the user is typing, changing options, or editing annotations
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable) return;
 
-    // Navegação por Setas
+    // Arrow key navigation
     if (e.key === 'ArrowRight') {
         if (!pdfDoc || currentPage >= pdfDoc.numPages || pageRendering) return;
         currentPage++;
@@ -386,7 +386,7 @@ window.addEventListener('keydown', (e) => {
             e.preventDefault();
             zoomOut();
         }
-        // Undo / Redo (Ctrl+Z / Ctrl+Y). Ctrl+Shift+Z também refaz.
+        // Undo / Redo (Ctrl+Z / Ctrl+Y). Ctrl+Shift+Z also performs redo.
         const k = e.key ? e.key.toLowerCase() : '';
         if (k === 'z') {
             e.preventDefault();
@@ -402,7 +402,7 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-// Suporte a zoom com Ctrl + Scroll do mouse
+// Support zoom with Ctrl + mouse wheel
 window.addEventListener('wheel', (e) => {
     if (e.ctrlKey) {
         e.preventDefault();
@@ -463,12 +463,12 @@ window.addEventListener('resize', () => {
 });
 
 // ==========================================
-// 5. CONTROLES DE ZOOM
+// 5. ZOOM CONTROLS
 // ==========================================
 const zoomDisplay = document.getElementById('zoomDisplay');
 
 function zoomIn() {
-    // Limita o zoom máximo a 300% e evita cliques duplos rápidos
+    // Limit maximum zoom to 300% and prevent rapid double clicks
     if (pageRendering || currentScale >= 3.0) return; 
     
     currentScale += 0.25; // Aumenta de 25 em 25%
@@ -477,7 +477,7 @@ function zoomIn() {
 }
 
 function zoomOut() {
-    // Limita o zoom mínimo a 50%
+    // Limit minimum zoom to 50%
     if (pageRendering || currentScale <= 0.5) return; 
     
     currentScale -= 0.25; // Reduz de 25 em 25%
@@ -494,7 +494,7 @@ if (undoBtn) undoBtn.addEventListener('click', () => { undo(); });
 if (redoBtn) redoBtn.addEventListener('click', () => { redo(); });
 
 // ==========================================
-// 7. ANOTAÇÕES E HIGHLIGHTS
+// 7. ANNOTATIONS AND HIGHLIGHTS
 // ==========================================
 let annotations = {
     highlights: {}, // pageNumber -> [ { color, rects: [[x,y,w,h]] } ]
@@ -524,7 +524,7 @@ const MAX_HISTORY = 50;
 let isPerformingUndoRedo = false;
 let previousAnnotationsSnapshot = null;
 
-// Carregar anotações
+// Load annotations
 function loadAnnotations() {
     if (!BOOK_ID) return;
     chrome.storage.local.get([`ann_${BOOK_ID}`], (result) => {
@@ -534,7 +534,7 @@ function loadAnnotations() {
             drawings: saved.drawings || {},
             texts: saved.texts || {}
         };
-        // Inicializa histórico de undo/redo com o estado inicial
+        // Initialize undo/redo history with the initial state
         undoStack = [];
         redoStack = [];
         undoStack.push(cloneAnnotations(annotations));
@@ -544,26 +544,26 @@ function loadAnnotations() {
     });
 }
 
-// Salvar anotações
+// Save annotations
 function saveAnnotations() {
     if (!BOOK_ID) return;
     chrome.storage.local.set({ [`ann_${BOOK_ID}`]: annotations });
 }
 
-// Usa quando uma ação muda as anotações: push no undo stack
+// Call when annotations change: push current state to undo stack
 function updateUndoRedoUI() {
     try {
         if (typeof undoBtn !== 'undefined' && undoBtn) undoBtn.disabled = (undoStack.length <= 1 || isPerformingUndoRedo);
         if (typeof redoBtn !== 'undefined' && redoBtn) redoBtn.disabled = (redoStack.length === 0 || isPerformingUndoRedo);
     } catch (e) {
-        // ignore if buttons not available yet
+        // ignore if buttons are not available yet
     }
 }
 
-// Usa quando uma ação muda as anotações: push no undo stack
+// Call when annotations change: record a new undo entry
 function recordChange() {
     if (isPerformingUndoRedo) return;
-    // Limpa redo ao fazer nova ação
+    // Clear redo stack when performing a new action
     redoStack = [];
     undoStack.push(cloneAnnotations(annotations));
     if (undoStack.length > MAX_HISTORY) undoStack.shift();
@@ -571,7 +571,7 @@ function recordChange() {
 }
 
 function undo() {
-    if (undoStack.length <= 1) return; // nada a desfazer além do estado inicial
+    if (undoStack.length <= 1) return; // nothing to undo beyond the initial state
     isPerformingUndoRedo = true;
     const current = undoStack.pop();
     redoStack.push(cloneAnnotations(current));
@@ -595,18 +595,18 @@ function redo() {
     updateUndoRedoUI();
 }
 
-// Renderizar anotações da página atual
+// Render annotations for the current page
 function renderAnnotations(pageNum) {
     if (!annotations) return;
     
-    // Configura canvas de desenho
+    // Configure drawing canvas
     drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
     const pageDrawings = annotations.drawings[pageNum] || [];
     pageDrawings.forEach(d => {
         if (d.paths.length < 2) return;
         drawCtx.beginPath();
         drawCtx.strokeStyle = d.color;
-        drawCtx.lineWidth = d.thickness * currentScale; // Ajusta espessura pelo zoom
+        drawCtx.lineWidth = d.thickness * currentScale; // Adjust stroke thickness based on zoom
         drawCtx.lineCap = 'round';
         drawCtx.lineJoin = 'round';
         drawCtx.moveTo(d.paths[0][0] * currentScale, d.paths[0][1] * currentScale);
@@ -616,7 +616,7 @@ function renderAnnotations(pageNum) {
         drawCtx.stroke();
     });
 
-    // Configura highlights
+    // Render highlights
     highlightsLayer.innerHTML = '';
     const pageHighlights = annotations.highlights[pageNum] || [];
     pageHighlights.forEach((hl, index) => {
@@ -633,7 +633,7 @@ function renderAnnotations(pageNum) {
         });
     });
 
-    // Configura Textos
+    // Render text annotations
     textAnnotationsLayer.innerHTML = '';
     const pageTexts = annotations.texts[pageNum] || [];
     pageTexts.forEach((tData, index) => {
@@ -642,7 +642,7 @@ function renderAnnotations(pageNum) {
         container.style.left = (tData.x * currentScale) + 'px';
         container.style.top = (tData.y * currentScale) + 'px';
         
-        // Define fallback fontsize (16) if undefined (older texts)
+        // Define fallback font size (16) if undefined (older annotations)
         const size = tData.fontSize || 16; 
 
         const div = document.createElement('div');
@@ -655,7 +655,7 @@ function renderAnnotations(pageNum) {
         const dragHandle = document.createElement('button');
         dragHandle.className = 'text-drag-handle';
         dragHandle.innerHTML = '⠿';
-        dragHandle.title = "Mover texto";
+        dragHandle.title = "Move text";
         
         let isDragging = false;
         let dragOffset = { x: 0, y: 0 };
@@ -677,7 +677,7 @@ function renderAnnotations(pageNum) {
                 let newX = ev.clientX - wrapperRect.left - dragOffset.x;
                 let newY = ev.clientY - wrapperRect.top - dragOffset.y;
                 
-                // Boundaries clamp (optional but good)
+                    // Boundaries clamp (optional but recommended)
                 if (newX < 0) newX = 0;
                 if (newY < 0) newY = 0;
                 
@@ -708,14 +708,14 @@ function renderAnnotations(pageNum) {
         const delBtn = document.createElement('button');
         delBtn.className = 'text-delete-btn';
         delBtn.innerHTML = '🗑️';
-        delBtn.title = "Excluir texto";
+        delBtn.title = "Delete text";
         
         // Clique na lixeira para excluir
         delBtn.addEventListener('mousedown', (e) => {
             e.preventDefault(); // Evita perder foco antes de deletar
             e.stopPropagation();
             
-            // Se estiver editando, desativa o blur pra não sobrepor
+            // If currently editing, disable blur handler to avoid conflicts
             div.onblur = null; 
             
             annotations.texts[pageNum].splice(index, 1);
@@ -724,7 +724,7 @@ function renderAnnotations(pageNum) {
             renderAnnotations(pageNum);
         });
 
-        // Clique no próprio texto o torna editável novamente (re-edição)
+        // Clicking the text itself makes it editable again (re-edit)
         div.addEventListener('click', (e) => {
             e.stopPropagation();
             if (div.isContentEditable) return; // Já está editando
@@ -751,7 +751,7 @@ function renderAnnotations(pageNum) {
                         recordChange();
                         saveAnnotations();
                 } else {
-                    // Texto ficou vazio, exclui a anotação
+                    // If the text is empty after edit, remove the annotation
                     annotations.texts[pageNum].splice(index, 1);
                         recordChange();
                         saveAnnotations();
@@ -759,7 +759,7 @@ function renderAnnotations(pageNum) {
                 }
             };
             
-            // Remove antigos eventos pra não empilhar caso clique fora e dentro de novo
+            // Remove old event handlers to avoid stacking when toggling edit
             div.onblur = saveEditedText;
             div.onkeydown = (ev) => {
                 if (ev.key === 'Escape' || (ev.key === 'Enter' && !ev.shiftKey)) {
@@ -836,7 +836,7 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Seleção de cor e tamanho do texto
+// Text color and size selection
 document.getElementById('textColors').addEventListener('click', (e) => {
     if(e.target.classList.contains('color-btn')) {
         document.querySelectorAll('#textColors .color-btn').forEach(b => b.classList.remove('selected'));
@@ -850,7 +850,7 @@ document.getElementById('textFontSize').addEventListener('input', (e) => {
     textSizeDisplay.textContent = currentTextSize + 'px';
 });
 
-// Seleção de cor do desenho
+// Drawing color selection
 document.getElementById('drawColors').addEventListener('click', (e) => {
     if(e.target.classList.contains('color-btn')) {
         document.querySelectorAll('#drawColors .color-btn').forEach(b => b.classList.remove('selected'));
@@ -858,7 +858,7 @@ document.getElementById('drawColors').addEventListener('click', (e) => {
         currentDrawColor = e.target.dataset.color;
         
         if (!isTextMode) {
-            // Ativa modo desenho automaticamente apenas se não estiver no modo texto
+            // Activate draw mode automatically only if not in text mode
             isDrawMode = true;
             drawCanvas.classList.add('active');
             drawBtn.innerHTML = '🖍️ Ativo ▾';
@@ -895,8 +895,8 @@ drawCanvas.addEventListener('mousedown', (e) => {
     const y = (e.clientY - rect.top) / currentScale;
     currentPath = [[x, y]];
     
-    // Inicia um novo subpath no contexto de desenho para evitar que o
-    // próximo `lineTo` conecte ao último traço salvo no canvas.
+    // Start a new subpath on the drawing context so the
+    // next `lineTo` does not connect to the last saved stroke on the canvas.
     if (drawCtx) {
         drawCtx.beginPath();
         drawCtx.strokeStyle = currentDrawColor;
@@ -996,7 +996,7 @@ document.getElementById('pageWrapper').addEventListener('click', (e) => {
             saveAnnotations();
         }
         
-        // Remove o container de criação e deixa a renderização recriar limpo
+        // Remove the temporary creation container and let rendering recreate a clean view
         container.remove();
         renderAnnotations(currentPage);
     };
@@ -1035,7 +1035,7 @@ document.getElementById('pageWrapper').addEventListener('mouseup', (e) => {
                 ]);
             }
             
-            // Lógica lateral original: ao abrir a sidebar, garante 'Detectar auto'
+            // Original sidebar behavior: when opening, ensure 'Detect auto' is set
             if (!sidebar.classList.contains('open')) {
                 enforceAutoSource();
                 sidebar.classList.add('open');
@@ -1047,7 +1047,7 @@ document.getElementById('pageWrapper').addEventListener('mouseup', (e) => {
     }, 100);
 });
 
-// Hover detection: quando o usuário passa o mouse com um texto selecionado, tenta detectar o idioma (debounced)
+// Hover detection: when the user moves the mouse with text selected, try to detect language (debounced)
 document.getElementById('pageWrapper').addEventListener('mousemove', (e) => {
     if (isDrawMode || isTextMode) return;
     const selection = window.getSelection();
@@ -1070,7 +1070,7 @@ document.getElementById('pageWrapper').addEventListener('mousemove', (e) => {
     }, 250);
 });
 
-// Ações do painel lateral de Highlight
+// Sidebar highlight actions
 document.getElementById('hlColors').addEventListener('click', (e) => {
     if(e.target.classList.contains('color-btn')) {
         const color = e.target.dataset.color;
@@ -1089,7 +1089,7 @@ document.getElementById('hlColors').addEventListener('click', (e) => {
             renderAnnotations(currentPage);
         } else {
              if (annotations.highlights[currentPage]) {
-                // Remove destaques se a seleção de texto atual contiver ou estiver contida no texto destacado
+                // Remove highlights if the current selection contains or is contained within the highlighted text
                 const before = annotations.highlights[currentPage].length;
                 annotations.highlights[currentPage] = annotations.highlights[currentPage].filter(hl => 
                     !(lastSelectionText.includes(hl.text) || hl.text.includes(lastSelectionText))
@@ -1108,7 +1108,7 @@ document.getElementById('hlColors').addEventListener('click', (e) => {
 });
 
 // ==========================================
-// 8. MODAL DE CONFIGURAÇÕES
+// 8. SETTINGS MODAL
 // ==========================================
 const settingsModal = document.getElementById('settingsModal');
 const settingsBtn = document.getElementById('settingsBtn');
@@ -1157,7 +1157,7 @@ async function saveSettingsFn() {
         azureRegion: azureRegionInput.value.trim() || 'brazilsouth'
     };
 
-    // Validação básica para Azure
+    // Basic validation for Azure settings
     if (newSettings.provider === 'microsoft' && !newSettings.azureKey) {
         alert('Por favor, insira a chave da API do Azure.');
         return;
@@ -1336,7 +1336,7 @@ function initLanguageControls() {
     enforceAutoSource();
 }
 
-// Inicialização: carrega settings do storage e abre o PDF
+// Initialization: load settings from storage and open the PDF
 loadAllSettings().then(() => {
     // Inicializa controles de idioma (sidebar) e depois o tradutor
     initLanguageControls();
