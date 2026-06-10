@@ -319,22 +319,31 @@
             </div>
             <div class="sidebar-content">
                 
-                <div style="margin-bottom: 20px; background: #1e1e1e; padding: 10px; border-radius: 6px; border: 1px solid #3e3e42;">
-                    <span class="translate-label" style="margin-bottom: 8px;">Destaque a seleção atual:</span>
-                    <div class="color-picker" id="hlColors">
-                        <div class="color-btn" style="background: var(--hl-yellow)" data-color="#fced6e"></div>
-                        <div class="color-btn" style="background: var(--hl-green)" data-color="#7cfb62"></div>
-                        <div class="color-btn" style="background: var(--hl-blue)" data-color="#70d8ff"></div>
-                        <div class="color-btn" style="background: var(--hl-red)" data-color="#ff6a6a"></div>
-                        <div class="color-btn" style="background: var(--hl-black)" data-color="#000000"></div>
-                        <div class="color-btn color-btn-none" data-color="none" title="Remover" style="margin-left: auto;"></div>
+                <div style="margin-bottom: 12px;">
+                    <div style="margin-bottom: 12px; background: #1e1e1e; padding: 10px; border-radius: 6px; border: 1px solid #3e3e42;">
+                        <span class="translate-label" style="margin-bottom: 8px;">Destaque a seleção atual:</span>
+                        <div class="color-picker" id="hlColors">
+                            <div class="color-btn" style="background: var(--hl-yellow)" data-color="#fced6e"></div>
+                            <div class="color-btn" style="background: var(--hl-green)" data-color="#7cfb62"></div>
+                            <div class="color-btn" style="background: var(--hl-blue)" data-color="#70d8ff"></div>
+                            <div class="color-btn" style="background: var(--hl-red)" data-color="#ff6a6a"></div>
+                            <div class="color-btn" style="background: var(--hl-black)" data-color="#000000"></div>
+                            <div class="color-btn color-btn-none" data-color="none" title="Remover" style="margin-left: auto;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Language controls (source detect + swap + target) -->
+                    <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
+                        <select id="sourceLangSelect" class="setting-select" style="width:130px; padding:6px; font-size:13px;"></select>
+                        <button id="swapLangBtn" title="Trocar idiomas" style="width:36px; height:36px; border-radius:6px;">⇄</button>
+                        <select id="targetLangSelect" class="setting-select" style="width:150px; padding:6px; font-size:13px;"></select>
                     </div>
                 </div>
 
-                <span class="translate-label">Inglês (Detectado)</span>
+                <span class="translate-label">Origem</span>
                 <div class="text-box" id="sourceText">Selecione um texto no PDF...</div>
                 
-                <span class="translate-label">Português (Tradução)</span>
+                <span class="translate-label">Destino (Tradução)</span>
                 <div class="text-box" id="translatedText">Aguardando API de tradução...</div>
             </div>
         </aside>

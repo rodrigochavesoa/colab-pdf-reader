@@ -368,8 +368,8 @@ Durante o desenvolvimento e testes da extensão, documentamos diferenças import
 - [x] **🚀 Sincronia de Renderização:** Fim do efeito "ghosting" ao trocar de página.
 - [ ] Atalhos de teclado customizáveis
   - `Ctrl + Shift + T` → Abrir/fechar tradução
-  - `Ctrl + [` / `Ctrl + ]` → Zoom in/out
-  - `Alt + J` / `Alt + K` → Próxima/anterior página
+  [x] `Ctrl + Z → Undo` → Desfazer 
+  [x] `Ctrl + Y → Redo` → Refazer 
 
 ### v1.2.0 (Próximo)
 - [ ] Painel de opções (Options Page)
@@ -383,7 +383,7 @@ Durante o desenvolvimento e testes da extensão, documentamos diferenças import
 - [x] Add anotações em texto
 
 ### v2.0.0 (Visão)
-- [ ] Suporte a múltiplos idiomas na interface
+- [-] Suporte a múltiplos idiomas na interface (Parcial)
 - [ ] Sincronização entre dispositivos (via Google Drive)
 - [ ] API pública para desenvolvedores
 - [ ] Integração com ferramentas de IA (Claude, ChatGPT)

@@ -29,7 +29,8 @@ const textAnnotationsLayer = document.getElementById('textAnnotationsLayer');
 const DEFAULT_SETTINGS = {
     provider: 'mymemory',           // Default: gratuito, sem cadastro
     azureKey: '',
-    azureRegion: 'brazilsouth'
+    azureRegion: 'brazilsouth',
+    targetLang: 'pt-br'             // idioma alvo padrão para tradução
 };
 
 let translatorSettings = { ...DEFAULT_SETTINGS };
@@ -156,6 +157,71 @@ class TranslatorService {
             return data[0].translations[0].text;
         }
         throw new Error("Resposta inválida do serviço de tradução");
+    }
+
+    // Detect language (Azure when available, otherwise fallback heuristic)
+    async detect(text) {
+        if (!text) return '';
+        // Try Azure detect if available
+        if (this.provider === 'microsoft' && this.azureKey) {
+            try {
+                const url = 'https://api.cognitive.microsofttranslator.com/detect?api-version=3.0';
+                const body = JSON.stringify([{ "Text": text }]);
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Ocp-Apim-Subscription-Key': this.azureKey,
+                        'Ocp-Apim-Subscription-Region': this.azureRegion,
+                        'Content-type': 'application/json'
+                    },
+                    body
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data && data[0] && data[0].language) {
+                        const lang = data[0].language;
+                        return (lang === 'pt') ? 'pt-br' : lang;
+                    }
+                }
+            } catch (err) {
+                console.warn('Language detection failed (Azure):', err);
+            }
+        }
+
+        // Fallback: simple stopword-based heuristic for common languages
+        const textLower = text.toLowerCase();
+        const scores = { en: 0, es: 0, 'pt-br': 0, fr: 0, de: 0, it: 0 };
+        const patterns = {
+            en: [' the ', ' and ', ' is ', ' are ', ' of ', ' to ', ' in ', ' for '],
+            es: [' la ', ' el ', ' que ', ' de ', ' y ', ' los ', ' las ', ' en '],
+            'pt-br': [' o ', ' a ', ' que ', ' de ', ' e ', ' os ', ' as ', ' na ', ' no '],
+            fr: [' le ', ' la ', ' que ', ' de ', ' et ', ' les '],
+            de: [' der ', ' die ', ' und ', ' ist ', ' das '],
+            it: [' che ', ' di ', ' e ', ' la ', ' il ']
+        };
+
+        for (const [lng, arr] of Object.entries(patterns)) {
+            for (const p of arr) {
+                const count = (textLower.split(p).length - 1);
+                if (count > 0) scores[lng] += count;
+            }
+        }
+
+        // pick best
+        let best = 'en';
+        let bestScore = 0;
+        Object.entries(scores).forEach(([k, v]) => {
+            if (v > bestScore) { bestScore = v; best = k; }
+        });
+
+        if (bestScore === 0) {
+            // quick script checks as last resort
+            if (/[¿¡áéíóúñü]/.test(textLower)) return 'es';
+            if (/[ãõáâêç]/.test(textLower)) return 'pt-br';
+            return 'en';
+        }
+
+        return best;
     }
 }
 
@@ -910,12 +976,32 @@ document.getElementById('pageWrapper').addEventListener('mouseup', (e) => {
             }
             
             sourceTextArea.textContent = selectedText;
-            translatedTextArea.textContent = "Traduzindo...";
-            
-            const translatedResult = await translator.translate(selectedText, 'en', 'pt-br');
-            translatedTextArea.textContent = translatedResult;
+            await translateSelectedText(selectedText);
         }
     }, 100);
+});
+
+// Hover detection: quando o usuário passa o mouse com um texto selecionado, tenta detectar o idioma (debounced)
+document.getElementById('pageWrapper').addEventListener('mousemove', (e) => {
+    if (isDrawMode || isTextMode) return;
+    const selection = window.getSelection();
+    const selectedText = selection.toString().trim();
+    if (selectedText.length === 0) return;
+
+    const sourceSelect = document.getElementById('sourceLangSelect');
+    if (!sourceSelect || sourceSelect.value !== 'auto') return; // só detecta se usuário deixou em auto
+
+    if (_detectHoverTimeout) clearTimeout(_detectHoverTimeout);
+    _detectHoverTimeout = setTimeout(async () => {
+        try {
+            const detected = await translator.detect(selectedText);
+            lastDetectedLang = detected || 'en';
+            const opt = Array.from(sourceSelect.options).find(o => o.value === lastDetectedLang);
+            if (opt) sourceSelect.value = lastDetectedLang;
+        } catch (err) {
+            // silencioso
+        }
+    }, 250);
 });
 
 // Ações do painel lateral de Highlight
@@ -1033,8 +1119,107 @@ settingsModal.addEventListener('click', (e) => {
     if (e.target === settingsModal) closeSettingsModalFn();
 });
 
+// --- Language controls and translation helper ---
+let lastDetectedLang = '';
+let _detectHoverTimeout = null;
+
+async function translateSelectedText(text) {
+    const sourceSelect = document.getElementById('sourceLangSelect');
+    const targetSelect = document.getElementById('targetLangSelect');
+    if (!text) {
+        translatedTextArea.textContent = '';
+        return;
+    }
+
+    let sourceLang = sourceSelect ? sourceSelect.value : 'auto';
+    const targetLang = (targetSelect && targetSelect.value) ? targetSelect.value : (translatorSettings.targetLang || 'pt-br');
+
+    if (sourceLang === 'auto') {
+        translatedTextArea.textContent = 'Detectando idioma...';
+        const detected = await translator.detect(text);
+        lastDetectedLang = detected || 'en';
+        sourceLang = lastDetectedLang;
+        // If user hasn't overridden source select, reflect detected
+        if (sourceSelect && sourceSelect.value === 'auto') {
+            const opt = Array.from(sourceSelect.options).find(o => o.value === sourceLang);
+            if (opt) sourceSelect.value = sourceLang;
+        }
+    }
+
+    translatedTextArea.textContent = 'Traduzindo...';
+    try {
+        const result = await translator.translate(text, sourceLang, targetLang);
+        translatedTextArea.textContent = result;
+    } catch (err) {
+        console.error('Erro na tradução:', err);
+        translatedTextArea.textContent = '❌ Erro ao traduzir.';
+    }
+}
+
+function initLanguageControls() {
+    const langs = [
+        { code: 'auto', label: 'Detectar automaticamente' },
+        { code: 'en', label: 'English' },
+        { code: 'pt-br', label: 'Português (BR)' },
+        { code: 'es', label: 'Español' },
+        { code: 'fr', label: 'Français' },
+        { code: 'de', label: 'Deutsch' },
+        { code: 'it', label: 'Italiano' }
+    ];
+
+    const sourceSelect = document.getElementById('sourceLangSelect');
+    const targetSelect = document.getElementById('targetLangSelect');
+    const swapBtn = document.getElementById('swapLangBtn');
+
+    if (!sourceSelect || !targetSelect) return; // nothing to do
+
+    // populate
+    sourceSelect.innerHTML = '';
+    targetSelect.innerHTML = '';
+    langs.forEach(l => {
+        const o1 = document.createElement('option'); o1.value = l.code; o1.textContent = l.label; sourceSelect.appendChild(o1);
+        const o2 = document.createElement('option'); o2.value = l.code; o2.textContent = l.label; targetSelect.appendChild(o2);
+    });
+
+    // set defaults
+    sourceSelect.value = 'auto';
+    const savedTarget = translatorSettings.targetLang || 'pt-br';
+    if (Array.from(targetSelect.options).find(o => o.value === savedTarget)) {
+        targetSelect.value = savedTarget;
+    } else {
+        targetSelect.value = 'pt-br';
+    }
+
+    // events
+    sourceSelect.addEventListener('change', () => {
+        // if user switches away from auto, retranslate selection
+        if (lastSelectionText && sourceSelect.value !== 'auto') translateSelectedText(lastSelectionText);
+    });
+
+    targetSelect.addEventListener('change', (e) => {
+        const newTarget = e.target.value;
+        // persist
+        saveTranslatorSettings({ targetLang: newTarget });
+        if (lastSelectionText) translateSelectedText(lastSelectionText);
+    });
+
+    swapBtn.addEventListener('click', () => {
+        const s = sourceSelect.value;
+        const t = targetSelect.value;
+        // if source is auto and we have a detected language, use that
+        const detected = (s === 'auto') ? (lastDetectedLang || 'en') : s;
+        // swap
+        sourceSelect.value = t || 'auto';
+        targetSelect.value = detected || 'pt-br';
+        saveTranslatorSettings({ targetLang: targetSelect.value });
+        if (lastSelectionText) translateSelectedText(lastSelectionText);
+    });
+}
+
 // Inicialização: carrega settings do storage e abre o PDF
 loadAllSettings().then(() => {
+    // Inicializa controles de idioma (sidebar) e depois o tradutor
+    initLanguageControls();
     initTranslator();
 
     if (BOOK_ID) {
