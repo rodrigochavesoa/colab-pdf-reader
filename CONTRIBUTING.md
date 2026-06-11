@@ -686,5 +686,34 @@ Cada contribuição, por menor que seja, faz diferença. Estamos ansiosos para t
 
 ---
 
-*Atualizado em June 2025*
-*Versão: 1.0.0*
+*Atualizado em June 2026*
+*Versão: 1.0.1*
+
+---
+
+## Projetos Open Source & Feedback Contínuo
+
+### Compromisso: valorizamos a colaboração com mantenedores de navegadores e outras plataformas para melhorar a experiência de leitura de PDFs. Em particular, sugerimos e apoiamos melhorias que preservem o estado de leitura (como posição da página) para arquivos locais e remotos; essas sugestões já foram encaminhadas e integradas em navegadores parceiros quando aplicável (ex.: melhorias implementadas pelo Microsoft Edge). Buscamos ativamente contribuir com a comunidade open source para promover privacidade, usabilidade e interoperabilidade.
+
+**Microsoft Edge**
+**Versão: 149.0.4022.52.**
+
+Olá, Equipe de Produto e Engenharia do Microsoft Edge,
+
+Como desenvolvedor de software que usa o Microsoft Edge diariamente para ler extensa documentação técnica, livros e manuais de referência em formato PDF, gostaria de sugerir uma melhoria crucial na experiência do usuário em relação ao leitor de PDF nativo.
+
+Atualmente, ao abrir um arquivo PDF local ou um documento online, o Edge frequentemente não consegue manter o estado exato de leitura (a página específica onde o usuário parou) se a guia for fechada e reaberta em uma nova sessão. Isso cria atrito, forçando desenvolvedores e estudantes a procurar manualmente sua posição anterior ou a depender de extensões de terceiros que podem apresentar riscos de segurança ou sobrecarga.
+
+Solução proposta:
+Implementar um sistema robusto e nativo de marcadores automáticos usando o localStorage ou o cache de sessão, que vincule os metadados do arquivo (ou o hash da URL) à última página visualizada. Quando o usuário reabrir esse PDF específico, o Edge deverá sugerir ou rolar automaticamente até a posição exata onde a leitura foi interrompida.
+
+Esse recurso elevaria consideravelmente o posicionamento do Edge como o principal navegador para produtividade, pesquisa acadêmica e estudo técnico, mantendo os usuários dentro do ecossistema nativo sem a necessidade de extensões externas. plugins.
+
+Obrigado pelo seu tempo e por continuar aprimorando este excelente navegador.
+
+Atenciosamente,
+
+Rodrigo Chaves
+
+
+*Atualizado em June 2026*
