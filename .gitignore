@@ -5,3 +5,6 @@ config.js
 .DS_Store
 Thumbs.db
 .vscode
+
+# Ignora arquivos de log e bugs
+bug.md

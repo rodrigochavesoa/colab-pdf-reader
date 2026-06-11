@@ -50,7 +50,7 @@
         /* Reserve a fixed width for the right area to avoid reflows when its content changes */
         .toolbar-right { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 0 auto; width: 220px; justify-content: flex-end; }
         .controls-center { display: flex; align-items: center; gap: 12px; justify-content: center; min-width: 0; flex: 1 1 auto; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-gutter: stable; }
-        .status-msg { display: inline-block; width: 160px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; text-align: right; opacity: 1; transition: opacity 250ms ease; }
+        .status-msg { display: inline-block; max-width: 160px; box-sizing: border-box; padding: 0 16px 0 14px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; text-align: right; opacity: 1; transition: opacity 250ms ease; }
         .controls-center::-webkit-scrollbar{height:6px}
         .controls-center::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:4px}
         .page-info { font-size: 18px; font-weight: bold; color: #00ca4e; }

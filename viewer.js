@@ -320,13 +320,15 @@ function saveProgress(page) {
     // Ensure status is visible and doesn't trigger layout shifts
     statusEl.style.opacity = '1';
     statusEl.textContent = "Saving current page...";
+    try { updateStatusPosition(); } catch (e) { /* ignore */ }
     chrome.storage.local.set({ [BOOK_ID]: page }, () => {
         statusEl.textContent = "Progress saved!";
+        try { updateStatusPosition(); } catch (e) { /* ignore */ }
         // Keep message briefly then fade out to avoid leaving text that could
         // cause future small layout recalculations in some browsers.
         setTimeout(() => {
             statusEl.style.opacity = '0';
-            setTimeout(() => { statusEl.textContent = ''; }, 260);
+            setTimeout(() => { statusEl.textContent = ''; try { updateStatusPosition(); } catch (e) {} }, 260);
         }, 700);
     });
 }
@@ -474,23 +476,34 @@ function updateStatusPosition() {
         const toolbar = document.querySelector('.toolbar');
         const toolbarRight = document.querySelector('.toolbar-right');
         if (!statusEl || !toolbar || !toolbarRight) return;
-
-        // Measure width of right-side buttons so status can be positioned without
-        // affecting flex layout. This keeps the status out of document flow
-        // and prevents content shifts when its text changes.
+        // Simpler: ancorar à direita e limitar largura disponível
         let buttonsWidth = 0;
         toolbarRight.querySelectorAll('button').forEach(btn => {
             const style = getComputedStyle(btn);
             const mr = parseFloat(style.marginRight) || 0;
-            buttonsWidth += btn.offsetWidth + mr;
+            const ml = parseFloat(style.marginLeft) || 0;
+            buttonsWidth += btn.offsetWidth + mr + ml;
         });
 
         const rightOffset = Math.round(buttonsWidth + 12); // spacing buffer
+        const toolbarWidth = toolbar.clientWidth || toolbar.getBoundingClientRect().width;
+        const paddingLeft = parseFloat(getComputedStyle(toolbar).paddingLeft) || 14;
+        const paddingRight = parseFloat(getComputedStyle(toolbar).paddingRight) || 14;
+        const safetyBuffer = 40;
+
+        const maxWidth = Math.max(40, toolbarWidth - buttonsWidth - paddingLeft - paddingRight - safetyBuffer);
+
         statusEl.style.position = 'absolute';
         statusEl.style.top = '50%';
         statusEl.style.transform = 'translateY(-50%)';
         statusEl.style.pointerEvents = 'none';
         statusEl.style.right = rightOffset + 'px';
+        statusEl.style.left = 'auto';
+        statusEl.style.maxWidth = Math.min(maxWidth, 220) + 'px';
+        statusEl.style.overflow = 'hidden';
+        statusEl.style.textOverflow = 'ellipsis';
+        statusEl.style.whiteSpace = 'nowrap';
+        statusEl.style.zIndex = '1';
     } catch (err) {
         // ignore
     }
@@ -1247,7 +1260,8 @@ async function saveSettingsFn() {
     // Feedback visual
     const statusEl = document.getElementById('statusMsg');
     statusEl.textContent = 'Configurações salvas!';
-    setTimeout(() => statusEl.textContent = '', 2000);
+    try { updateStatusPosition(); } catch (e) {}
+    setTimeout(() => { statusEl.textContent = ''; try { updateStatusPosition(); } catch (e) {} }, 2000);
 }
 
 // Event Listeners
@@ -1283,7 +1297,8 @@ async function translateSelectedText(text) {
     if (translator && translator.provider === 'microsoft' && !translator.azureKey) {
         const statusEl = document.getElementById('statusMsg');
         statusEl.textContent = 'Azure não configurado — usando fallback MyMemory.';
-        setTimeout(() => { statusEl.textContent = ''; }, 2500);
+        try { updateStatusPosition(); } catch (e) {}
+        setTimeout(() => { statusEl.textContent = ''; try { updateStatusPosition(); } catch (e) {} }, 2500);
         activeTranslator = new TranslatorService('mymemory');
     }
 
